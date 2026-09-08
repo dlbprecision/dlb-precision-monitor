@@ -138,3 +138,30 @@ reboot/sign-in, repair, uninstall, other hardware, physical mixed-DPI displays,
 sleep/resume and actual game sessions remain pending as described above. No new
 performance measurement is claimed for v0.1.2; the September 7 figures and prior
 release evidence are preserved as historical results.
+
+## Signed v0.1.3 Settings fix verified on September 8
+
+`DLB-Precision-Monitor-0.1.3-Setup.exe` is 7,430,472 bytes. SHA256:
+
+```text
+b9ddb9bdb4af1c66ef856a07f7d072aca396923b3c12477cd3aa2864a581e27b
+```
+
+- The reported four-line sensor-details text was reproduced in an isolated
+  Settings window. The label now uses its full preferred height (60 pixels in
+  the 96-DPI check), displaying the final resizing instruction without clipping.
+- Long wrapped details grew to 150 pixels and remained reachable in the
+  scrolling content area of a 490-by-450 window. Apply/Close stayed fixed and
+  accessible; no horizontal scrollbar appeared. Both cases were visually checked.
+- Build completed with zero warnings/errors. Setup, its embedded uninstaller
+  and first-party files were signed and timestamped. All four installed DLB files
+  report version 0.1.3.0; those files and `unins000.exe` passed exact publisher
+  verification for **DLB Precision, LLC**. All 19 installed runtime hashes passed.
+- The automated signed v0.1.2-to-v0.1.3 upgrade exited 0 without a reboot. The
+  sensor service remained Automatic and Running. User settings and startup
+  registration were preserved, and the desktop shortcut relaunched the app.
+- All 40 installed-widget checks and 22 installed-service/client checks passed,
+  with all seven live readings available and no sensor warnings.
+
+This is a layout fix; prior performance measurements and the outstanding
+clean-PC, physical mixed-DPI, hardware and game coverage above remain unchanged.

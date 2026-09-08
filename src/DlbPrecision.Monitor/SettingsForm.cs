@@ -114,7 +114,15 @@ namespace DlbPrecision.Monitor
             content.Controls.Add(shortcut);
             content.Controls.Add(new Label { Text = "Click the shortcut field and press Ctrl or Alt plus a key.", ForeColor = Color.FromArgb(163, 158, 178), Location = new Point(26, 526), Size = new Size(437, 22) });
 
-            var diagnosticsLabel = new Label { Text = diagnostics, ForeColor = Color.FromArgb(163, 158, 178), Location = new Point(26, 555), Size = new Size(436, 51), AutoEllipsis = true };
+            var diagnosticsLabel = new Label
+            {
+                Name = "SensorDetails",
+                Text = diagnostics,
+                ForeColor = Color.FromArgb(163, 158, 178),
+                Location = new Point(26, 555),
+                AutoSize = true,
+                MaximumSize = new Size(436, 0)
+            };
             content.Controls.Add(diagnosticsLabel);
             diagnosticsTip.SetToolTip(diagnosticsLabel, diagnostics);
             validation.SetBounds(26, 623, 435, 44); validation.ForeColor = Color.FromArgb(245, 169, 179);

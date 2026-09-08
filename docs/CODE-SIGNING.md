@@ -50,8 +50,8 @@ uses a new staging directory and never deletes earlier build artifacts.
 
 ```powershell
 $signingBuild = @{
-    Version = '0.1.2'
-    OutputDirectory = '.\artifacts\release-0.1.2-attempt-1'
+    Version = '0.1.3'
+    OutputDirectory = '.\artifacts\release-0.1.3-attempt-1'
     Sign = $true
     SignToolPath = '<full-path-to-x64-signtool.exe>'
     DlibPath = '<full-path-to-x64-Azure.CodeSigning.Dlib.dll>'
