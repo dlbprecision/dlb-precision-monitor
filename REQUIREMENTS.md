@@ -1,6 +1,6 @@
 # DLB Precision hardware monitor
 
-Status: v0.1.0 private pilot implemented; broader hardware and installer validation remains before customer release.
+Status: v0.1.0 pilot implemented and publicly downloadable for testing; broader hardware and installer validation remains before customer release.
 
 ## Confirmed scope
 

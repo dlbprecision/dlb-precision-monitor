@@ -8,11 +8,11 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-Download `DLB-Precision-Monitor-0.1.0-Setup.exe` from the [v0.1.0 pilot release](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) and run it normally (double-click). Access requires an account with permission to this private repository. A SHA256 checksum file accompanies the installer.
+Download `DLB-Precision-Monitor-0.1.0-Setup.exe` from the [v0.1.0 pilot release](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) and run it normally (double-click). The repository and installer are public; no GitHub account is needed to download. A SHA256 checksum file accompanies the installer.
 
 Accept Windows administrator approval for setup. The installer includes the signed PawnIO hardware-access setup if needed, the sensor service, and the widget. Windows 11 already contains the .NET Framework runtime it uses. Local builds produce the same installer filename under `artifacts/installer/`.
 
-The current private pilot's DLB installer and application are unsigned. The bundled PawnIO driver installer keeps its original publisher signature. A DLB signing identity and broader clean-PC testing are release work before customer distribution.
+The current pilot's DLB installer and application are unsigned. The bundled PawnIO driver installer keeps its original publisher signature. A DLB signing identity and broader clean-PC testing are release work before customer distribution.
 
 ## Use
 
