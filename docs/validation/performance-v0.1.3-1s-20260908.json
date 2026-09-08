@@ -1,0 +1,3164 @@
+{
+  "measuredAtUtc": "2026-09-08T06:26:18.8763826Z",
+  "scenario": "Installed v0.1.3 monitor and sensor service; current horizontal widget, 1 second refresh; normal desktop workload",
+  "counterSource": "Win32_PerfRawData_PerfProc_Process; PERF_100NSEC_TIMER",
+  "durationSeconds": 120.82,
+  "warmupSeconds": 5,
+  "logicalProcessors": 32,
+  "processes": [
+    "DlbPrecision.Monitor",
+    "DlbPrecision.Service"
+  ],
+  "sampleCount": 115,
+  "averageCpuPercent": 0.0356,
+  "peakSampleCpuPercent": 0.1398,
+  "averageWorkingSetMiB": 117.83,
+  "peakWorkingSetMiB": 120.76,
+  "averagePrivateWorkingSetMiB": 49.42,
+  "peakPrivateWorkingSetMiB": 52.36,
+  "averagePrivateMiB": 83.39,
+  "peakPrivateMiB": 86.22,
+  "processSummaries": [
+    {
+      "process": "DlbPrecision.Monitor",
+      "processId": 35316,
+      "counterDurationSeconds": 120.8111291,
+      "averageCpuPercent": 0.009700058336761293,
+      "peakSampleCpuPercent": 0.09318718814944761,
+      "averageWorkingSetMiB": 52.59459918478261,
+      "averagePrivateWorkingSetMiB": 15.831623641304347,
+      "averagePrivateMiB": 34.07133152173913,
+      "cpuStartTicks": 16875000.0,
+      "cpuEndTicks": 20625000.0,
+      "startTimestampTicks": 134333222580242457.0,
+      "endTimestampTicks": 134333223788353748.0
+    },
+    {
+      "process": "DlbPrecision.Service",
+      "processId": 33528,
+      "counterDurationSeconds": 120.8111291,
+      "averageCpuPercent": 0.025866822231363454,
+      "peakSampleCpuPercent": 0.09323166179455405,
+      "averageWorkingSetMiB": 65.2390625,
+      "averagePrivateWorkingSetMiB": 33.590149456521736,
+      "averagePrivateMiB": 49.32119565217391,
+      "cpuStartTicks": 37656250.0,
+      "cpuEndTicks": 47656250.0,
+      "startTimestampTicks": 134333222580242457.0,
+      "endTimestampTicks": 134333223788353748.0
+    }
+  ],
+  "notes": [
+    "CPU includes user and kernel time of all measured processes and is normalized across all logical processors. Average uses full-window counter deltas; roughly one-second sampling can miss shorter peaks.",
+    "Private working set is private resident RAM. Working set includes shared pages and summing it can double-count them. Private bytes are committed private memory, not necessarily all resident RAM.",
+    "Missing counters and changed process identities fail the measurement instead of being counted as zero.",
+    "Only the named processes are measured; separate System/driver activity is not attributed to the application. This is not a gaming FPS or whole-system overhead test."
+  ],
+  "samples": [
+    {
+      "elapsedSeconds": 1.0624238,
+      "cpuPercent": 0.04601897924608536,
+      "workingSetMiB": 118.18359375,
+      "privateWorkingSetMiB": 49.79296875,
+      "privateMiB": 83.73828125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0610432,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.09375,
+          "privateWorkingSetMiB": 16.3515625,
+          "privateMiB": 34.62109375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0610432,
+          "cpuPercent": 0.04601897924608536,
+          "workingSetMiB": 65.08984375,
+          "privateWorkingSetMiB": 33.44140625,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 2.1178234,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.37890625,
+      "privateWorkingSetMiB": 49.98828125,
+      "privateMiB": 83.9609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0650475,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.2734375,
+          "privateWorkingSetMiB": 16.53125,
+          "privateMiB": 34.80859375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0650475,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.10546875,
+          "privateWorkingSetMiB": 33.45703125,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 3.1673252,
+      "cpuPercent": 0.046514631428122614,
+      "workingSetMiB": 118.47265625,
+      "privateWorkingSetMiB": 50.08203125,
+      "privateMiB": 84.0234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0497369,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.359375,
+          "privateWorkingSetMiB": 16.6171875,
+          "privateMiB": 34.87109375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0497369,
+          "cpuPercent": 0.046514631428122614,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 4.2167077,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.51953125,
+      "privateWorkingSetMiB": 50.12890625,
+      "privateMiB": 84.06640625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493951,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.421875,
+          "privateWorkingSetMiB": 16.6796875,
+          "privateMiB": 34.94921875
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493951,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 5.2657144,
+      "cpuPercent": 0.04653368399013025,
+      "workingSetMiB": 118.63671875,
+      "privateWorkingSetMiB": 50.24609375,
+      "privateMiB": 84.2109375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493071,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.5234375,
+          "privateWorkingSetMiB": 16.78125,
+          "privateMiB": 35.05859375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493071,
+          "cpuPercent": 0.04653368399013025,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 6.31557,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.75,
+      "privateWorkingSetMiB": 50.359375,
+      "privateMiB": 84.3359375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0491672,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.63671875,
+          "privateWorkingSetMiB": 16.89453125,
+          "privateMiB": 35.18359375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0491672,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 7.3793782,
+      "cpuPercent": 0.04600478814890747,
+      "workingSetMiB": 118.828125,
+      "privateWorkingSetMiB": 50.4375,
+      "privateMiB": 84.36328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0613705,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.73046875,
+          "privateWorkingSetMiB": 16.98828125,
+          "privateMiB": 35.24609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0613705,
+          "cpuPercent": 0.04600478814890747,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 8.4321981,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.9296875,
+      "privateWorkingSetMiB": 50.5390625,
+      "privateMiB": 84.5234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0560655,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 53.81640625,
+          "privateWorkingSetMiB": 17.07421875,
+          "privateMiB": 35.37109375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0560655,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 9.4815966,
+      "cpuPercent": 0.13960432486008295,
+      "workingSetMiB": 119.0234375,
+      "privateWorkingSetMiB": 50.6328125,
+      "privateMiB": 84.5859375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0492825,
+          "cpuPercent": 0.09306954990672198,
+          "workingSetMiB": 53.91015625,
+          "privateWorkingSetMiB": 17.16796875,
+          "privateMiB": 35.43359375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0492825,
+          "cpuPercent": 0.04653477495336099,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 10.5313793,
+      "cpuPercent": 0.046531741670017154,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.20703125,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493509,
+          "cpuPercent": 0.046531741670017154,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493509,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 11.5800062,
+      "cpuPercent": 0.04654980529460256,
+      "workingSetMiB": 117.61328125,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0489437,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0489437,
+          "cpuPercent": 0.04654980529460256,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 12.6281316,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.58203125,
+      "privateWorkingSetMiB": 49.19140625,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0481159,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.484375,
+          "privateWorkingSetMiB": 15.7421875,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0481159,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 13.6774777,
+      "cpuPercent": 0.046535302714094916,
+      "workingSetMiB": 117.56640625,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0492706,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0492706,
+          "cpuPercent": 0.046535302714094916,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 14.7258247,
+      "cpuPercent": 0.09318718814944761,
+      "workingSetMiB": 117.55078125,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0479579,
+          "cpuPercent": 0.09318718814944761,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0479579,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 15.7762576,
+      "cpuPercent": 0.09297075630892115,
+      "workingSetMiB": 117.55078125,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0503975,
+          "cpuPercent": 0.04648537815446058,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0503975,
+          "cpuPercent": 0.04648537815446058,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 16.8253163,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.55078125,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0492972,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.484375,
+          "privateWorkingSetMiB": 15.7421875,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0492972,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 17.8839761,
+      "cpuPercent": 0.04630258741169882,
+      "workingSetMiB": 117.5859375,
+      "privateWorkingSetMiB": 49.1953125,
+      "privateMiB": 83.125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0545442,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.50390625,
+          "privateWorkingSetMiB": 15.76171875,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0545442,
+          "cpuPercent": 0.04630258741169882,
+          "workingSetMiB": 65.08203125,
+          "privateWorkingSetMiB": 33.43359375,
+          "privateMiB": 49.12890625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 18.9280558,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.56640625,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.05859375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0502355,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.48828125,
+          "privateWorkingSetMiB": 15.74609375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0502355,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.078125,
+          "privateWorkingSetMiB": 33.4296875,
+          "privateMiB": 49.09765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 19.9804483,
+      "cpuPercent": 0.1396123081615196,
+      "workingSetMiB": 117.6171875,
+      "privateWorkingSetMiB": 49.2265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0492225,
+          "cpuPercent": 0.09307487210767973,
+          "workingSetMiB": 52.50390625,
+          "privateWorkingSetMiB": 15.76171875,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0492225,
+          "cpuPercent": 0.046537436053839865,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 21.0268496,
+      "cpuPercent": 0.046553138305408324,
+      "workingSetMiB": 120.7578125,
+      "privateWorkingSetMiB": 52.36328125,
+      "privateMiB": 86.22265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0488686,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.48828125,
+          "privateWorkingSetMiB": 15.7421875,
+          "privateMiB": 33.94921875
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0488686,
+          "cpuPercent": 0.046553138305408324,
+          "workingSetMiB": 68.26953125,
+          "privateWorkingSetMiB": 36.62109375,
+          "privateMiB": 52.2734375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 22.0772308,
+      "cpuPercent": 0.09308826900740322,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0490715,
+          "cpuPercent": 0.09308826900740322,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0490715,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 23.1264875,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493274,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493274,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 24.1751407,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0494619,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0494619,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 25.2249209,
+      "cpuPercent": 0.046543952599793575,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0490756,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0490756,
+          "cpuPercent": 0.046543952599793575,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 26.2735328,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0497874,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0497874,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 27.3240221,
+      "cpuPercent": 0.04652252894478413,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0495587,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0495587,
+          "cpuPercent": 0.04652252894478413,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 28.3719678,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.60546875,
+      "privateWorkingSetMiB": 49.20703125,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.04821,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.04821,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 29.4154131,
+      "cpuPercent": 0.04669213715526769,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0457462,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0457462,
+          "cpuPercent": 0.04669213715526769,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 30.4664086,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0486619,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0486619,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 31.5137966,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0476853,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0476853,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 32.5629679,
+      "cpuPercent": 0.04659193572642318,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0479952,
+          "cpuPercent": 0.04659193572642318,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0479952,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 33.611303,
+      "cpuPercent": 0.09309294552204403,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0490188,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.4921875,
+          "privateWorkingSetMiB": 15.7421875,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0490188,
+          "cpuPercent": 0.09309294552204403,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 34.6610519,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0499158,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0499158,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 35.7114494,
+      "cpuPercent": 0.04650214358066732,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0500188,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0500188,
+          "cpuPercent": 0.04650214358066732,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 36.7605085,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.54296875,
+      "privateWorkingSetMiB": 49.14453125,
+      "privateMiB": 83.0078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493412,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.4921875,
+          "privateWorkingSetMiB": 15.7421875,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493412,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 37.8137001,
+      "cpuPercent": 0.04641964629400042,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0518849,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0518849,
+          "cpuPercent": 0.04641964629400042,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 38.864212,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.52734375,
+      "privateWorkingSetMiB": 49.12890625,
+      "privateMiB": 82.9609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0515128,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.4765625,
+          "privateWorkingSetMiB": 15.7265625,
+          "privateMiB": 33.9140625
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0515128,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 39.9135192,
+      "cpuPercent": 0.04654420105426712,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.04907,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.04907,
+          "cpuPercent": 0.04654420105426712,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 40.9631312,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.049688,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.049688,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 42.0098206,
+      "cpuPercent": 0.09322237923224233,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0475623,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0475623,
+          "cpuPercent": 0.09322237923224233,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 43.0693318,
+      "cpuPercent": 0.046331369211428414,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0538891,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0538891,
+          "cpuPercent": 0.046331369211428414,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 44.1196917,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0540272,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0540272,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 45.1687433,
+      "cpuPercent": 0.04650098329119228,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.050045,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.050045,
+          "cpuPercent": 0.04650098329119228,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 46.2198785,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0505526,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0505526,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 47.2699139,
+      "cpuPercent": 0.04646312410517227,
+      "workingSetMiB": 117.55859375,
+      "privateWorkingSetMiB": 49.16015625,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0509006,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0509006,
+          "cpuPercent": 0.04646312410517227,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 48.3210819,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.57421875,
+      "privateWorkingSetMiB": 49.17578125,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0510933,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0510933,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 49.3753315,
+      "cpuPercent": 0.04632880635219557,
+      "workingSetMiB": 117.58984375,
+      "privateWorkingSetMiB": 49.19140625,
+      "privateMiB": 83.125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0539474,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0539474,
+          "cpuPercent": 0.04632880635219557,
+          "workingSetMiB": 65.08203125,
+          "privateWorkingSetMiB": 33.43359375,
+          "privateMiB": 49.12890625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 50.430893,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.5859375,
+      "privateWorkingSetMiB": 49.1875,
+      "privateMiB": 83.09375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0546927,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0546927,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.078125,
+          "privateWorkingSetMiB": 33.4296875,
+          "privateMiB": 49.09765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 51.4898138,
+      "cpuPercent": 0.09244223960384812,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0564029,
+          "cpuPercent": 0.04622111980192406,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0564029,
+          "cpuPercent": 0.04622111980192406,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 52.5365028,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0528212,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0528212,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 53.5853696,
+      "cpuPercent": 0.04664206727719844,
+      "workingSetMiB": 117.60546875,
+      "privateWorkingSetMiB": 49.20703125,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0468688,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.7578125,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0468688,
+          "cpuPercent": 0.04664206727719844,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 54.6400836,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.58203125,
+      "privateWorkingSetMiB": 49.18359375,
+      "privateMiB": 83.06640625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0525939,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.46875,
+          "privateWorkingSetMiB": 15.71875,
+          "privateMiB": 33.9140625
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0525939,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 55.6978094,
+      "cpuPercent": 0.04617003745467092,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0575717,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0575717,
+          "cpuPercent": 0.04617003745467092,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 56.7440378,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0512772,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0512772,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 57.7913397,
+      "cpuPercent": 0.0466761759205922,
+      "workingSetMiB": 117.61328125,
+      "privateWorkingSetMiB": 49.21484375,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0461038,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0461038,
+          "cpuPercent": 0.0466761759205922,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 58.8407285,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.047041,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.047041,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 59.8900425,
+      "cpuPercent": 0.04656124426186675,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.048686,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.484375,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.048686,
+          "cpuPercent": 0.04656124426186675,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 60.9394561,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0505982,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0505982,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 61.9888235,
+      "cpuPercent": 0.04647320235883163,
+      "workingSetMiB": 117.58203125,
+      "privateWorkingSetMiB": 49.18359375,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0506727,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.484375,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0506727,
+          "cpuPercent": 0.04647320235883163,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 63.0373881,
+      "cpuPercent": 0.046608884893779116,
+      "workingSetMiB": 117.61328125,
+      "privateWorkingSetMiB": 49.21484375,
+      "privateMiB": 83.1484375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0476141,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0476141,
+          "cpuPercent": 0.046608884893779116,
+          "workingSetMiB": 65.11328125,
+          "privateWorkingSetMiB": 33.46484375,
+          "privateMiB": 49.15234375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 64.0858236,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.55078125,
+      "privateWorkingSetMiB": 49.15234375,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.050274,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.050274,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 65.1334857,
+      "cpuPercent": 0.046609521116747064,
+      "workingSetMiB": 117.56640625,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0475998,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0475998,
+          "cpuPercent": 0.046609521116747064,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 66.185196,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.56640625,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0482053,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0482053,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 67.2374346,
+      "cpuPercent": 0.09280620690762806,
+      "workingSetMiB": 118.46484375,
+      "privateWorkingSetMiB": 50.06640625,
+      "privateMiB": 83.9609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0522599,
+          "cpuPercent": 0.04640310345381403,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0522599,
+          "cpuPercent": 0.04640310345381403,
+          "workingSetMiB": 65.96484375,
+          "privateWorkingSetMiB": 34.31640625,
+          "privateMiB": 49.96484375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 68.29928,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.46484375,
+      "privateWorkingSetMiB": 50.06640625,
+      "privateMiB": 83.9609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0565601,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0565601,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.96484375,
+          "privateWorkingSetMiB": 34.31640625,
+          "privateMiB": 49.96484375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 69.3502467,
+      "cpuPercent": 0.09235654513487118,
+      "workingSetMiB": 118.0703125,
+      "privateWorkingSetMiB": 49.64453125,
+      "privateMiB": 83.90234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0573831,
+          "cpuPercent": 0.04617827256743559,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0573831,
+          "cpuPercent": 0.04617827256743559,
+          "workingSetMiB": 65.54296875,
+          "privateWorkingSetMiB": 33.89453125,
+          "privateMiB": 49.90625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 70.4000892,
+      "cpuPercent": 0.046500434166741746,
+      "workingSetMiB": 118.0703125,
+      "privateWorkingSetMiB": 49.64453125,
+      "privateMiB": 83.90234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0500574,
+          "cpuPercent": 0.046500434166741746,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0500574,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.54296875,
+          "privateWorkingSetMiB": 33.89453125,
+          "privateMiB": 49.90625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 71.4533899,
+      "cpuPercent": 0.04629594513297914,
+      "workingSetMiB": 118.0703125,
+      "privateWorkingSetMiB": 49.64453125,
+      "privateMiB": 83.90234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0546955,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0546955,
+          "cpuPercent": 0.04629594513297914,
+          "workingSetMiB": 65.54296875,
+          "privateWorkingSetMiB": 33.89453125,
+          "privateMiB": 49.90625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 72.5058482,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.0703125,
+      "privateWorkingSetMiB": 49.64453125,
+      "privateMiB": 83.90234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0508007,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0508007,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.54296875,
+          "privateWorkingSetMiB": 33.89453125,
+          "privateMiB": 49.90625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 73.5626219,
+      "cpuPercent": 0.0926359643393809,
+      "workingSetMiB": 118.0703125,
+      "privateWorkingSetMiB": 49.64453125,
+      "privateMiB": 83.90234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0541937,
+          "cpuPercent": 0.04631798216969045,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0541937,
+          "cpuPercent": 0.04631798216969045,
+          "workingSetMiB": 65.54296875,
+          "privateWorkingSetMiB": 33.89453125,
+          "privateMiB": 49.90625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 74.6126431,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.0546875,
+      "privateWorkingSetMiB": 49.62890625,
+      "privateMiB": 83.8671875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0538139,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0538139,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.52734375,
+          "privateWorkingSetMiB": 33.87890625,
+          "privateMiB": 49.87109375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 75.6659655,
+      "cpuPercent": 0.09289943654128377,
+      "workingSetMiB": 117.59375,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0512039,
+          "cpuPercent": 0.046449718270641885,
+          "workingSetMiB": 52.52734375,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0512039,
+          "cpuPercent": 0.046449718270641885,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 76.7140017,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.55078125,
+      "privateWorkingSetMiB": 49.12109375,
+      "privateMiB": 82.9609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0516507,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5,
+          "privateWorkingSetMiB": 15.71875,
+          "privateMiB": 33.9140625
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0516507,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 77.7626303,
+      "cpuPercent": 0.04655455420276579,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0488367,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53125,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0488367,
+          "cpuPercent": 0.04655455420276579,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 78.8155077,
+      "cpuPercent": 0.04647565293280436,
+      "workingSetMiB": 117.58203125,
+      "privateWorkingSetMiB": 49.15234375,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0506173,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53125,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0506173,
+          "cpuPercent": 0.04647565293280436,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 79.8652196,
+      "cpuPercent": 0.046561190982401614,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0486872,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53125,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0486872,
+          "cpuPercent": 0.046561190982401614,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 80.9143622,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.56640625,
+      "privateWorkingSetMiB": 49.13671875,
+      "privateMiB": 83.0078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0495143,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.515625,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0495143,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 81.9645432,
+      "cpuPercent": 0.046508557217342275,
+      "workingSetMiB": 117.58203125,
+      "privateWorkingSetMiB": 49.15234375,
+      "privateMiB": 83.04296875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.049874,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53125,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.049874,
+          "cpuPercent": 0.046508557217342275,
+          "workingSetMiB": 65.05078125,
+          "privateWorkingSetMiB": 33.40234375,
+          "privateMiB": 49.046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 83.0148449,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.59765625,
+      "privateWorkingSetMiB": 49.16796875,
+      "privateMiB": 83.078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0502093,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53125,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0502093,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.06640625,
+          "privateWorkingSetMiB": 33.41796875,
+          "privateMiB": 49.08203125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 84.0655637,
+      "cpuPercent": 0.0464680808745052,
+      "workingSetMiB": 117.62890625,
+      "privateWorkingSetMiB": 49.19921875,
+      "privateMiB": 83.12890625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0507885,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0507885,
+          "cpuPercent": 0.0464680808745052,
+          "workingSetMiB": 65.09375,
+          "privateWorkingSetMiB": 33.4453125,
+          "privateMiB": 49.1328125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 85.1134104,
+      "cpuPercent": 0.0465975648091755,
+      "workingSetMiB": 118.546875,
+      "privateWorkingSetMiB": 50.1171875,
+      "privateMiB": 84.03125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0478686,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0478686,
+          "cpuPercent": 0.0465975648091755,
+          "workingSetMiB": 66.01171875,
+          "privateWorkingSetMiB": 34.36328125,
+          "privateMiB": 50.03515625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 86.1625457,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.53125,
+      "privateWorkingSetMiB": 50.1015625,
+      "privateMiB": 83.99609375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0498014,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0498014,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.99609375,
+          "privateWorkingSetMiB": 34.34765625,
+          "privateMiB": 50
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 87.2115425,
+      "cpuPercent": 0.04653153325717231,
+      "workingSetMiB": 118.125,
+      "privateWorkingSetMiB": 49.6953125,
+      "privateMiB": 83.97265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0493556,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0493556,
+          "cpuPercent": 0.04653153325717231,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 88.2565347,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.125,
+      "privateWorkingSetMiB": 49.6953125,
+      "privateMiB": 83.97265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0476548,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0476548,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 89.3038947,
+      "cpuPercent": 0.0466752032451935,
+      "workingSetMiB": 118.125,
+      "privateWorkingSetMiB": 49.6953125,
+      "privateMiB": 83.97265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0461256,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0461256,
+          "cpuPercent": 0.0466752032451935,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 90.352951,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.125,
+      "privateWorkingSetMiB": 49.6953125,
+      "privateMiB": 83.97265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0465882,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0465882,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 91.4072184,
+      "cpuPercent": 0.046294790721117175,
+      "workingSetMiB": 118.125,
+      "privateWorkingSetMiB": 49.6953125,
+      "privateMiB": 83.97265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0547218,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0547218,
+          "cpuPercent": 0.046294790721117175,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 92.4578156,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.11328125,
+      "privateWorkingSetMiB": 49.6796875,
+      "privateMiB": 83.92578125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0504598,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5234375,
+          "privateWorkingSetMiB": 15.73828125,
+          "privateMiB": 33.94921875
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0504598,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.58984375,
+          "privateWorkingSetMiB": 33.94140625,
+          "privateMiB": 49.9765625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 93.5047726,
+      "cpuPercent": 0.04651740987822698,
+      "workingSetMiB": 117.63671875,
+      "privateWorkingSetMiB": 49.203125,
+      "privateMiB": 83.11328125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0496742,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0496742,
+          "cpuPercent": 0.04651740987822698,
+          "workingSetMiB": 65.09765625,
+          "privateWorkingSetMiB": 33.44921875,
+          "privateMiB": 49.1171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 94.5535377,
+      "cpuPercent": 0.046674962313515235,
+      "workingSetMiB": 117.703125,
+      "privateWorkingSetMiB": 49.26953125,
+      "privateMiB": 83.25390625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.046131,
+          "cpuPercent": 0.046674962313515235,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.046131,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.515625,
+          "privateMiB": 49.2578125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 95.599368,
+      "cpuPercent": 0.04654208927578758,
+      "workingSetMiB": 117.6875,
+      "privateWorkingSetMiB": 49.25390625,
+      "privateMiB": 83.19140625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0491176,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0491176,
+          "cpuPercent": 0.04654208927578758,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.5,
+          "privateMiB": 49.1953125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 96.6471264,
+      "cpuPercent": 0.046643207884428155,
+      "workingSetMiB": 117.6875,
+      "privateWorkingSetMiB": 49.25390625,
+      "privateMiB": 83.19140625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0468432,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5234375,
+          "privateWorkingSetMiB": 15.73828125,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0468432,
+          "cpuPercent": 0.046643207884428155,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.515625,
+          "privateMiB": 49.23046875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 97.699983,
+      "cpuPercent": 0.09313298577354749,
+      "workingSetMiB": 117.6875,
+      "privateWorkingSetMiB": 49.25390625,
+      "privateMiB": 83.19140625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0485678,
+          "cpuPercent": 0.046566492886773746,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0485678,
+          "cpuPercent": 0.046566492886773746,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.5,
+          "privateMiB": 49.1953125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 98.7468526,
+      "cpuPercent": 0.04643406361777564,
+      "workingSetMiB": 117.640625,
+      "privateWorkingSetMiB": 49.20703125,
+      "privateMiB": 83.12109375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0515583,
+          "cpuPercent": 0.04643406361777564,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0515583,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1015625,
+          "privateWorkingSetMiB": 33.453125,
+          "privateMiB": 49.125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 99.7967146,
+      "cpuPercent": 0.13984749269183108,
+      "workingSetMiB": 117.65625,
+      "privateWorkingSetMiB": 49.22265625,
+      "privateMiB": 83.15625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.047458,
+          "cpuPercent": 0.04661583089727703,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.047458,
+          "cpuPercent": 0.09323166179455405,
+          "workingSetMiB": 65.1171875,
+          "privateWorkingSetMiB": 33.46875,
+          "privateMiB": 49.16015625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 100.8476379,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.62109375,
+      "privateWorkingSetMiB": 49.1875,
+      "privateMiB": 83.08203125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0492252,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.51953125,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.95703125
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0492252,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1015625,
+          "privateWorkingSetMiB": 33.453125,
+          "privateMiB": 49.125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 101.896538,
+      "cpuPercent": 0.04645367777795431,
+      "workingSetMiB": 117.625,
+      "privateWorkingSetMiB": 49.19140625,
+      "privateMiB": 83.08203125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0511143,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5078125,
+          "privateWorkingSetMiB": 15.72265625,
+          "privateMiB": 33.921875
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0511143,
+          "cpuPercent": 0.04645367777795431,
+          "workingSetMiB": 65.1171875,
+          "privateWorkingSetMiB": 33.46875,
+          "privateMiB": 49.16015625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 102.9562093,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.625,
+      "privateWorkingSetMiB": 49.19140625,
+      "privateMiB": 83.08203125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0571971,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5234375,
+          "privateWorkingSetMiB": 15.73828125,
+          "privateMiB": 33.95703125
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0571971,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1015625,
+          "privateWorkingSetMiB": 33.453125,
+          "privateMiB": 49.125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 104.0039935,
+      "cpuPercent": 0.046525795985650105,
+      "workingSetMiB": 118.515625,
+      "privateWorkingSetMiB": 50.08203125,
+      "privateMiB": 84.0078125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.049485,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.049485,
+          "cpuPercent": 0.046525795985650105,
+          "workingSetMiB": 65.9765625,
+          "privateWorkingSetMiB": 34.328125,
+          "privateMiB": 50.01171875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 105.0563754,
+      "cpuPercent": 0.0464338560789986,
+      "workingSetMiB": 118.1171875,
+      "privateWorkingSetMiB": 49.68359375,
+      "privateMiB": 83.9453125,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.051563,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.051563,
+          "cpuPercent": 0.0464338560789986,
+          "workingSetMiB": 65.578125,
+          "privateWorkingSetMiB": 33.9296875,
+          "privateMiB": 49.94921875
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 106.1051984,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.1328125,
+      "privateWorkingSetMiB": 49.69921875,
+      "privateMiB": 83.98046875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0496035,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0496035,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.59375,
+          "privateWorkingSetMiB": 33.9453125,
+          "privateMiB": 49.984375
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 107.1529809,
+      "cpuPercent": 0.04651510998916765,
+      "workingSetMiB": 118.15234375,
+      "privateWorkingSetMiB": 49.71484375,
+      "privateMiB": 84.02734375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0497261,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.5390625,
+          "privateWorkingSetMiB": 15.75390625,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0497261,
+          "cpuPercent": 0.04651510998916765,
+          "workingSetMiB": 65.61328125,
+          "privateWorkingSetMiB": 33.9609375,
+          "privateMiB": 50.03125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 108.2018456,
+      "cpuPercent": 0.046623384410959236,
+      "workingSetMiB": 118.140625,
+      "privateWorkingSetMiB": 49.703125,
+      "privateMiB": 83.98046875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0472883,
+          "cpuPercent": 0.046623384410959236,
+          "workingSetMiB": 52.51953125,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.94921875
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0472883,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.62109375,
+          "privateWorkingSetMiB": 33.96875,
+          "privateMiB": 50.03125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 109.253551,
+      "cpuPercent": 0.04643793212687715,
+      "workingSetMiB": 118.17578125,
+      "privateWorkingSetMiB": 49.73828125,
+      "privateMiB": 84.046875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0514707,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0514707,
+          "cpuPercent": 0.04643793212687715,
+          "workingSetMiB": 65.640625,
+          "privateWorkingSetMiB": 33.98828125,
+          "privateMiB": 50.05078125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 110.3033902,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 118.17578125,
+      "privateWorkingSetMiB": 49.73828125,
+      "privateMiB": 84.046875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0499822,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0499822,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.640625,
+          "privateWorkingSetMiB": 33.98828125,
+          "privateMiB": 50.05078125
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 111.3539079,
+      "cpuPercent": 0.04649813595594287,
+      "workingSetMiB": 117.68359375,
+      "privateWorkingSetMiB": 49.24609375,
+      "privateMiB": 83.1875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0501093,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0501093,
+          "cpuPercent": 0.04649813595594287,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.49609375,
+          "privateMiB": 49.19140625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 112.4011977,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.69921875,
+      "privateWorkingSetMiB": 49.26171875,
+      "privateMiB": 83.22265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0482392,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0482392,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.51171875,
+          "privateMiB": 49.2265625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 113.4503855,
+      "cpuPercent": 0.09314083805556886,
+      "workingSetMiB": 117.69921875,
+      "privateWorkingSetMiB": 49.26171875,
+      "privateMiB": 83.22265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0484794,
+          "cpuPercent": 0.04657041902778443,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0484794,
+          "cpuPercent": 0.04657041902778443,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.51171875,
+          "privateMiB": 49.2265625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 114.5047391,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.69921875,
+      "privateWorkingSetMiB": 49.26171875,
+      "privateMiB": 83.22265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.054811,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.054811,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.51171875,
+          "privateMiB": 49.2265625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 115.5563356,
+      "cpuPercent": 0.13951173209290205,
+      "workingSetMiB": 117.68359375,
+      "privateWorkingSetMiB": 49.24609375,
+      "privateMiB": 83.1875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0499789,
+          "cpuPercent": 0.046503910697634016,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0499789,
+          "cpuPercent": 0.09300782139526803,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.49609375,
+          "privateMiB": 49.19140625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 116.6030696,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.68359375,
+      "privateWorkingSetMiB": 49.24609375,
+      "privateMiB": 83.1875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0497642,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0497642,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.49609375,
+          "privateMiB": 49.19140625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 117.6523442,
+      "cpuPercent": 0.046605254750973976,
+      "workingSetMiB": 117.69921875,
+      "privateWorkingSetMiB": 49.26171875,
+      "privateMiB": 83.22265625,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0476957,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0476957,
+          "cpuPercent": 0.046605254750973976,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.51171875,
+          "privateMiB": 49.2265625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 118.7030325,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.66796875,
+      "privateWorkingSetMiB": 49.23046875,
+      "privateMiB": 83.15234375,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0515124,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.51953125,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0515124,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.49609375,
+          "privateMiB": 49.19140625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 119.7531371,
+      "cpuPercent": 0.04658798373145819,
+      "workingSetMiB": 117.68359375,
+      "privateWorkingSetMiB": 49.24609375,
+      "privateMiB": 83.1875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0480841,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.53515625,
+          "privateWorkingSetMiB": 15.75,
+          "privateMiB": 33.99609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0480841,
+          "cpuPercent": 0.04658798373145819,
+          "workingSetMiB": 65.1484375,
+          "privateWorkingSetMiB": 33.49609375,
+          "privateMiB": 49.19140625
+        }
+      ]
+    },
+    {
+      "elapsedSeconds": 120.8045326,
+      "cpuPercent": 0.0,
+      "workingSetMiB": 117.68359375,
+      "privateWorkingSetMiB": 49.24609375,
+      "privateMiB": 83.1875,
+      "processes": [
+        {
+          "process": "DlbPrecision.Monitor",
+          "processId": 35316,
+          "intervalSeconds": 1.0500352,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 52.51953125,
+          "privateWorkingSetMiB": 15.734375,
+          "privateMiB": 33.9609375
+        },
+        {
+          "process": "DlbPrecision.Service",
+          "processId": 33528,
+          "intervalSeconds": 1.0500352,
+          "cpuPercent": 0.0,
+          "workingSetMiB": 65.1640625,
+          "privateWorkingSetMiB": 33.51171875,
+          "privateMiB": 49.2265625
+        }
+      ]
+    }
+  ]
+}

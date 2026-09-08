@@ -69,13 +69,59 @@ uninstall behavior. A valid publisher signature identifies DLB; it does not
 guarantee immediate SmartScreen reputation. The historical v0.1.0 release remains
 unsigned with its original assets and checksum.
 
-## September 7 baseline performance
+## September 8 v0.1.3 performance
 
-Measurements include the installed service and visible widget together. CPU percentages normalize across all 32 logical processors. Memory reports both summed working set (which can double-count shared pages) and private bytes. Peak CPU is the largest one-second sample, not a sub-second trace.
+A fresh 120.81-second desktop measurement includes the installed v0.1.3 widget
+and its LocalSystem sensor service, using the current horizontal layout and
+1-second refresh. It collected 115 samples after a 5-second warmup. The user's
+settings file was unchanged through the measurement.
 
-At 1-second refresh, a 60-second desktop run averaged 0.0129% total CPU (largest one-second sample 0.1455%), 77.76 MiB private memory, and 112.61 MiB summed working set. Peak private memory was 81.57 MiB; peak working set was 116.68 MiB. Evidence: [performance-1s.json](validation/performance-1s.json).
+| Process | Average CPU | Average private resident RAM |
+| --- | ---: | ---: |
+| Widget | 0.0097% | 15.83 MiB |
+| Sensor service | 0.0259% | 33.59 MiB |
+| Combined | **0.0356%** | **49.42 MiB** |
 
-A diagnostic 2-second run kept the Settings window open because a live-test Close-button bug was discovered. Its higher memory/CPU is not a like-for-like refresh comparison. That run is preserved as [performance-2s-settings-open.json](validation/performance-2s-settings-open.json). The Close bug and resource disposal have been fixed and regression tested in the installed v0.1.1 build; a fresh 2-second measurement remains pending. These earlier performance measurements are not a new v0.1.1 performance test.
+The largest combined CPU sample was **0.1398%**; peak private resident RAM was
+**52.36 MiB**. Combined private committed memory averaged 83.39 MiB (peak 86.22),
+and summed working set averaged 117.83 MiB (peak 120.76). Private committed
+memory is not necessarily all resident in RAM; working set includes shared
+pages and summing it can double-count them.
+
+The corrected measurement script uses
+`Win32_PerfRawData_PerfProc_Process` counters for both processes. CPU percentages
+normalize across all 32 logical processors. Whole-window CPU counter deltas
+were checked against interval-weighted averages; both processes contributed
+measurable CPU time. Missing counters or changed process identities fail the
+measurement instead of silently being counted as zero. Samples are roughly one
+second apart, so shorter CPU peaks can be missed.
+
+These results cover the two application processes on the test PC during normal
+desktop use. Separate System/driver activity is not attributed to the app. This
+is not a gaming FPS test or a whole-system overhead measurement. Raw evidence:
+[performance-v0.1.3-1s-20260908.json](validation/performance-v0.1.3-1s-20260908.json).
+
+## September 7 baseline performance (CPU results superseded)
+
+The earlier collector could not read the LocalSystem service's CPU-time property
+without elevation. PowerShell returned an empty value that the script silently
+treated as zero. The old combined CPU figures, including the reported 0.0129%
+average and 0.1455% peak at 1-second refresh, are therefore unreliable. Use the
+corrected v0.1.3 measurement above; the difference is not evidence of an app
+performance regression.
+
+The original [performance-1s.json](validation/performance-1s.json) is preserved.
+Its separately collected memory counters averaged 77.76 MiB of private committed
+memory and 112.61 MiB of summed working set, with peaks of 81.57 and 116.68 MiB.
+The historical `privateMiB` field means private committed memory, not private
+resident RAM.
+
+A diagnostic 2-second run kept Settings open because a Close-button bug was
+discovered. It also used the faulty CPU collector and is not a valid CPU or
+like-for-like refresh comparison. The original
+[performance-2s-settings-open.json](validation/performance-2s-settings-open.json)
+is preserved. The Close bug and resource disposal were fixed and regression
+tested in v0.1.1; a fresh 2-second measurement remains pending.
 
 ## Remaining before customer release
 
@@ -163,5 +209,5 @@ b9ddb9bdb4af1c66ef856a07f7d072aca396923b3c12477cd3aa2864a581e27b
 - All 40 installed-widget checks and 22 installed-service/client checks passed,
   with all seven live readings available and no sensor warnings.
 
-This is a layout fix; prior performance measurements and the outstanding
-clean-PC, physical mixed-DPI, hardware and game coverage above remain unchanged.
+The fresh v0.1.3 desktop performance measurement is documented above. Outstanding
+clean-PC, physical mixed-DPI, hardware and game coverage remains unchanged.
