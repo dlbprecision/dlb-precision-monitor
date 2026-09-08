@@ -1,4 +1,4 @@
-DLB Precision Monitor - unsigned pilot build
+DLB Precision Monitor - signed pilot build
 
 For Windows 11 x64 PCs. This is a prerelease for testing, with broader hardware
 and installation testing still in progress.
@@ -6,6 +6,10 @@ and installation testing still in progress.
 One setup installs the monitor and its DLB Precision Sensors service. Windows
 administrator approval is required. Normal monitor launches do not need elevation.
 The service reads sensors only while the monitor requests them.
+
+The DLB installer, uninstaller and first-party application files are digitally
+signed and timestamped under DLB Precision, LLC. A publisher signature identifies
+DLB; Windows or a browser may still show reputation warnings for a new download.
 
 Setup includes the unmodified, signed official PawnIO 2.2.0 hardware-access
 installer. It installs PawnIO only if it is absent. Existing PawnIO installations
@@ -20,13 +24,12 @@ Windows Settings > Apps > Installed apps.
 Open setup normally (double-click) to configure startup for the original user.
 For deployments launched from an already elevated terminal or another account,
 launch the monitor from the target user's Start menu and configure startup there.
-User display preferences are preserved on uninstall for a future reinstall.
+A desktop shortcut is selected by default on fresh installations. User display
+preferences are preserved on uninstall for a future reinstall.
 
 The monitor is designed to stay on another display while you play. It does not
 inject an overlay into games. Verify your games during the pilot.
 
 Third-party notices, exact package versions, source locations and hashes are in
-the installed licenses and provenance directories. This DLB installer and its
-DLB application binaries are not publisher-signed. Windows may show an unknown
-publisher or unrecognized-app warning for this unsigned build. The PawnIO payload
-retains its original valid signature.
+the installed licenses and provenance directories. Third-party files retain
+their original bytes and signatures where supplied by their publishers.

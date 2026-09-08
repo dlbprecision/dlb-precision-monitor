@@ -1,9 +1,15 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')]
-    [string]$Version = '0.1.0',
+    [string]$Version = '0.1.1',
     [string]$IsccPath,
-    [switch]$SkipBuild
+    [switch]$SkipBuild,
+    [string]$OutputDirectory,
+    [switch]$Sign,
+    [string]$SignToolPath,
+    [string]$DlibPath,
+    [string]$SigningMetadataPath,
+    [string]$ExpectedPublisher
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,12 +17,39 @@ $ProgressPreference = 'SilentlyContinue'
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot 'installer\vendor\manifest.json') -Raw | ConvertFrom-Json
 $toolsRoot = Join-Path $repoRoot '.tools'
-$buildRoot = Join-Path $repoRoot 'artifacts\installer'
-$stageRoot = Join-Path $buildRoot 'stage'
+$buildRoot = if ($OutputDirectory) { [IO.Path]::GetFullPath($OutputDirectory) } else { Join-Path $repoRoot 'artifacts\installer' }
+$setupFile = Join-Path $buildRoot ('DLB-Precision-Monitor-' + $Version + '-Setup.exe')
+if ((Test-Path -LiteralPath $setupFile) -or (Test-Path -LiteralPath ($setupFile + '.sha256'))) {
+    throw 'Installer output or its checksum already exists. Select a new -OutputDirectory; existing release artifacts are never overwritten.'
+}
+$stageRoot = Join-Path $buildRoot ('stage-' + [Guid]::NewGuid().ToString('N'))
 $appStage = Join-Path $stageRoot 'app'
 $licenseStage = Join-Path $appStage 'licenses'
 $provenanceStage = Join-Path $appStage 'provenance'
 $sourceStage = Join-Path $appStage 'third-party-source'
+$signWrapper = Join-Path $PSScriptRoot 'Sign-Artifact.ps1'
+$signingArguments = @{}
+if ($Sign) {
+    foreach ($parameter in 'SignToolPath', 'DlibPath', 'SigningMetadataPath', 'ExpectedPublisher') {
+        if ([string]::IsNullOrWhiteSpace((Get-Variable -Name $parameter -ValueOnly))) {
+            throw "-$parameter is required with -Sign. Unsigned fallback is disabled."
+        }
+    }
+    $signingArguments = @{
+        SignToolPath = $SignToolPath; DlibPath = $DlibPath
+        MetadataPath = $SigningMetadataPath; ExpectedPublisher = $ExpectedPublisher
+    }
+    & $signWrapper @signingArguments -ValidateOnly
+    if ($LASTEXITCODE -ne 0) { throw 'Signing preflight failed.' }
+    $SignToolPath = (Get-Item -LiteralPath $SignToolPath).FullName
+    $DlibPath = (Get-Item -LiteralPath $DlibPath).FullName
+    $SigningMetadataPath = (Get-Item -LiteralPath $SigningMetadataPath).FullName
+    $signingArguments.SignToolPath = $SignToolPath
+    $signingArguments.DlibPath = $DlibPath
+    $signingArguments.MetadataPath = $SigningMetadataPath
+} elseif ($SignToolPath -or $DlibPath -or $SigningMetadataPath -or $ExpectedPublisher) {
+    throw 'Signing parameters require -Sign. Refusing to silently create an unsigned installer.'
+}
 New-Item -ItemType Directory -Force $toolsRoot, $buildRoot | Out-Null
 
 function Get-VerifiedDownload {
@@ -73,18 +106,19 @@ foreach ($project in $projects) {
     $project.Output = Join-Path (Split-Path -Parent $projectPath) 'bin\Release\net48'
     $project.Assets = Join-Path (Split-Path -Parent $projectPath) 'obj\project.assets.json'
     if (-not $SkipBuild) {
-        & dotnet build $projectPath --configuration Release --nologo -p:PlatformTarget=x64
+        $dotnetArguments = @('build', $projectPath, '--configuration', 'Release', '--nologo', '-p:PlatformTarget=x64', ('-p:Version=' + $Version))
+        & dotnet @dotnetArguments
         if ($LASTEXITCODE -ne 0) { throw "$($project.Name) build failed." }
+    }
+    $expectedFileVersion = if ($Version.Split('.').Count -eq 3) { $Version + '.0' } else { $Version }
+    foreach ($binary in (Get-ChildItem -LiteralPath $project.Output -File | Where-Object { $_.Name -match '^DlbPrecision\.(Monitor|Service|Shared|Sensors)\.(exe|dll)$' })) {
+        if ($binary.VersionInfo.FileVersion -ne $expectedFileVersion) {
+            throw "Build output version mismatch for $($binary.Name): expected $expectedFileVersion, found $($binary.VersionInfo.FileVersion). Rebuild without -SkipBuild."
+        }
     }
 }
 
-# Delete only this script's generated stage after checking the resolved absolute target.
-$resolvedStage = [IO.Path]::GetFullPath($stageRoot)
-$allowedStageParent = [IO.Path]::GetFullPath($buildRoot).TrimEnd('\') + '\'
-if (-not $resolvedStage.StartsWith($allowedStageParent, [StringComparison]::OrdinalIgnoreCase)) {
-    throw "Refusing to clear a stage outside the installer build directory: $resolvedStage"
-}
-if (Test-Path -LiteralPath $resolvedStage) { Remove-Item -LiteralPath $resolvedStage -Recurse -Force }
+# Preserve prior successful and failed stages for review; never delete artifacts.
 New-Item -ItemType Directory -Force $appStage, $licenseStage, $provenanceStage, $sourceStage | Out-Null
 Copy-Item -LiteralPath $modulesSource -Destination $sourceStage
 
@@ -113,7 +147,8 @@ foreach ($project in $projects) {
         $packages[$library.Name] = @{ Directory = $packageDirectory; Sha512 = $library.Value.sha512 }
     }
 }
-foreach ($required in 'DlbPrecision.Monitor.exe','DlbPrecision.Service.exe','DlbPrecision.Shared.dll','LibreHardwareMonitorLib.dll') {
+$dlbBinaries = @('DlbPrecision.Monitor.exe','DlbPrecision.Service.exe','DlbPrecision.Shared.dll','DlbPrecision.Sensors.dll')
+foreach ($required in ($dlbBinaries + 'LibreHardwareMonitorLib.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $appStage $required))) { throw "Missing staged runtime file: $required" }
 }
 if (-not $packages.ContainsKey('LibreHardwareMonitorLib/0.9.6')) {
@@ -205,6 +240,14 @@ The setup executable is built with Inno Setup. Upstream license, copyright and
 web addresses are preserved. See the licenses folder and vendor-manifest.json.
 '@
 Set-Content -LiteralPath (Join-Path $provenanceStage 'SOURCE-NOTICE.txt') -Value $sourceNotice -Encoding UTF8
+if ($Sign) {
+    # Sign staged copies only, after the shared-output and vendor runtime checks.
+    # Third-party dependencies, including PawnIO, retain their original bytes.
+    foreach ($binary in $dlbBinaries) {
+        & $signWrapper @signingArguments -FilePath (Join-Path $appStage $binary)
+        if ($LASTEXITCODE -ne 0) { throw "Required DLB signing failed: $binary" }
+    }
+}
 $runtimeHashes = Get-ChildItem -LiteralPath $appStage -File | Sort-Object Name | ForEach-Object {
     (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash.ToLowerInvariant() + '  ' + $_.Name
 }
@@ -214,11 +257,39 @@ Set-Content -LiteralPath (Join-Path $provenanceStage 'runtime-files.sha256') -Va
 $unsafePayload = Get-ChildItem -LiteralPath $appStage -Recurse -File | Where-Object { $_.Name -match 'WinRing0|OpenLibSys' }
 if ($unsafePayload) { throw 'Unexpected legacy sensor-driver payload; review dependencies before packaging.' }
 
-& $IsccPath ('/DStageDir=' + $stageRoot) ('/DOutputDir=' + $buildRoot) ('/DAppVersion=' + $Version) (Join-Path $repoRoot 'installer\DlbPrecision.iss')
+$compilerArguments = @(('/DStageDir=' + $stageRoot), ('/DOutputDir=' + $buildRoot), ('/DAppVersion=' + $Version))
+if ($Sign) {
+    function ConvertTo-InnoArgument([string]$Value) {
+        if ($Value -match '[\x00\r\n]') { throw 'Signing command arguments cannot contain NUL or line breaks.' }
+        # Win32 argv escaping followed by Inno's separate $f/$q/$$ expansion.
+        $escaped = [regex]::Replace($Value, '(\\*)"', '$1$1\"')
+        $escaped = [regex]::Replace($escaped, '(\\+)$', '$1$1')
+        return '$q' + $escaped.Replace('$', '$$').Replace('"', '$q') + '$q'
+    }
+    # Inno inherits this process's module path. Use the same PowerShell edition
+    # so Windows PowerShell cannot accidentally load incompatible Core modules.
+    $powerShellExecutable = if ($PSEdition -eq 'Core') { 'pwsh.exe' } else { 'powershell.exe' }
+    $powerShellPath = Join-Path $PSHOME $powerShellExecutable
+    $signCommand = (ConvertTo-InnoArgument $powerShellPath) + ' -NoProfile -NonInteractive -WindowStyle Hidden -File ' +
+        (ConvertTo-InnoArgument $signWrapper) + ' -SignToolPath ' + (ConvertTo-InnoArgument $SignToolPath) +
+        ' -DlibPath ' + (ConvertTo-InnoArgument $DlibPath) + ' -MetadataPath ' + (ConvertTo-InnoArgument $SigningMetadataPath) +
+        ' -ExpectedPublisher ' + (ConvertTo-InnoArgument $ExpectedPublisher) + ' -FilePath $f'
+    # Inno signs and verifies its temporary uninstaller through the wrapper
+    # before embedding it, then removes that temporary file. Isolate each run.
+    $uninstallerDirectory = Join-Path $buildRoot ('signed-uninstaller-' + [Guid]::NewGuid().ToString('N'))
+    New-Item -ItemType Directory -Path $uninstallerDirectory | Out-Null
+    $compilerArguments += @('/DSignRelease=1', ('/DSignedUninstallerDir=' + $uninstallerDirectory), ('/SDlbArtifact=' + $signCommand))
+}
+& $IsccPath @compilerArguments (Join-Path $repoRoot 'installer\DlbPrecision.iss')
 if ($LASTEXITCODE -ne 0) { throw 'Inno Setup compilation failed.' }
-$setupFile = Join-Path $buildRoot ('DLB-Precision-Monitor-' + $Version + '-Setup.exe')
+if ($Sign) {
+    & $signWrapper -VerifyOnly -FilePath $setupFile -SignToolPath $SignToolPath -ExpectedPublisher $ExpectedPublisher
+    if ($LASTEXITCODE -ne 0) { throw 'Final installer signature verification failed.' }
+}
 $setupHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setupFile).Hash.ToLowerInvariant()
 Set-Content -LiteralPath ($setupFile + '.sha256') -Value ($setupHash + '  ' + [IO.Path]::GetFileName($setupFile)) -Encoding ASCII
 Write-Host ('Built: ' + $setupFile)
 Write-Host ('Size: {0:N2} MiB; SHA256: {1}' -f ((Get-Item -LiteralPath $setupFile).Length / 1MB), $setupHash)
-Write-Host 'The DLB pilot setup is unsigned. No driver/service or DLB application has been installed by this build.'
+if ($Sign) { Write-Host 'DLB signatures, publisher and timestamps verified.' }
+else { Write-Host 'The DLB pilot setup is unsigned.' }
+Write-Host 'No driver/service or DLB application has been installed by this build.'

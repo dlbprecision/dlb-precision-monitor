@@ -5,7 +5,12 @@
   #define OutputDir "..\artifacts\installer"
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.1.0"
+  #define AppVersion "0.1.1"
+#endif
+#ifdef SignRelease
+  #define InstallationNotes "SIGNED-INSTALLATION-NOTES.txt"
+#else
+  #define InstallationNotes "INSTALLATION-NOTES.txt"
 #endif
 
 [Setup]
@@ -35,16 +40,24 @@ CloseApplicationsFilter=*.exe,*.dll
 RestartApplications=no
 UninstallDisplayIcon={app}\DlbPrecision.Monitor.exe
 SetupIconFile=..\src\DlbPrecision.Monitor\Assets\monitor.ico
-InfoBeforeFile=INSTALLATION-NOTES.txt
+InfoBeforeFile={#InstallationNotes}
+#ifdef SignRelease
+  #ifndef SignedUninstallerDir
+    #error SignedUninstallerDir is required for signed releases
+  #endif
+SignTool=DlbArtifact
+SignedUninstaller=yes
+SignedUninstallerDir={#SignedUninstallerDir}
+#endif
 
 [Tasks]
 Name: startup; Description: "Launch DLB Precision Monitor when I sign in"; Flags: checkedonce
-Name: desktopicon; Description: "Create a desktop shortcut"; Flags: unchecked
+Name: desktopicon; Description: "Create a desktop shortcut"
 
 [Files]
 Source: "{#StageDir}\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "vendor\PawnIO_setup.exe"; DestDir: "{tmp}"; Flags: dontcopy
-Source: "INSTALLATION-NOTES.txt"; DestDir: "{app}"; Flags: ignoreversion
+Source: "{#InstallationNotes}"; DestDir: "{app}"; DestName: "INSTALLATION-NOTES.txt"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\DLB Precision Monitor"; Filename: "{app}\DlbPrecision.Monitor.exe"

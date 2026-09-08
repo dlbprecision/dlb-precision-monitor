@@ -8,17 +8,19 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.0/DLB-Precision-Monitor-0.1.0-Setup.exe)**
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.1/DLB-Precision-Monitor-0.1.1-Setup.exe)**
 
-This public pilot needs no GitHub account. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) is an optional checksum, not another installer.
+**v0.1.1 is the first publisher-signed pilot**, with DLB Precision, LLC signatures and timestamps on setup, the uninstaller and DLB's application files. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.1) is an optional checksum, not another installer.
 
 1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
-3. Choose **Yes** on the Windows administrator prompt, then follow setup. The single installer includes the widget, sensor service, and signed PawnIO setup if needed; no separate hardware-monitoring program is required.
+3. Check that the Windows administrator prompt names **DLB Precision, LLC**, choose **Yes**, then follow setup. The single installer includes the widget, sensor service, and signed PawnIO setup if needed; no separate hardware-monitoring program is required. A desktop shortcut is selected by default on fresh installations.
 
 These instructions apply to reputation warnings. If Windows names a virus or threat, or provides no **Run anyway** option, stop and send DLB the exact message. Keep Windows Security enabled.
 
-The pilot's DLB installer and application are unsigned; **Unknown publisher** is expected on its administrator prompt. DLB publisher verification is in progress. Signing and broader clean-PC testing remain required before customer distribution. The bundled PawnIO installer retains its original signature. [Microsoft explains these reputation warnings](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+A publisher signature identifies DLB; it does not guarantee immediate SmartScreen trust, so new downloads may still show reputation warnings. The bundled PawnIO installer retains its original signature. Broader clean-PC and hardware testing remain required before general customer distribution. [Microsoft explains these reputation warnings](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+
+The earlier [v0.1.0 pilot](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) remains available as an unsigned historical release. Its original download and checksum are unchanged.
 
 Windows 11 already contains the .NET Framework runtime this app uses. Local builds place the installer under `artifacts/installer/`.
 
@@ -57,10 +59,10 @@ On a Windows development machine with a .NET SDK:
 dotnet build DlbPrecision.sln -c Release
 .\scripts\Test.ps1
 .\scripts\Test.ps1 -Integration # Requires installed sensor service
-.\scripts\Build-Installer.ps1
+.\scripts\Build-Installer.ps1 -Version 0.1.1 -OutputDirectory .\artifacts\unsigned-0.1.1-attempt-1
 ```
 
-The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. See `installer/README.md`.
+The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. The command above makes an **unsigned local build**; release signing is opt-in and requires DLB's approved signing profile. See [installer build instructions](installer/README.md) and [code-signing instructions](docs/CODE-SIGNING.md). Use a new output directory for each attempt; existing installer files and checksums are never overwritten.
 
 Useful diagnostic commands:
 

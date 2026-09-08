@@ -1,10 +1,11 @@
 # Pilot validation
 
-Date: 2026-09-07 (America/Chicago).
+Baseline testing: 2026-09-07. Signed v0.1.1 pilot verification: 2026-09-08.
+Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
-## Completed
+## Baseline completed on September 7
 
 - All six projects build in Release with zero warnings/errors.
 - 15 sensor selection assertions: package/core selection, clock/load aggregation, invalid values, zero-temperature placeholder rejection, and GPU core-vs-memory distinctions.
@@ -20,20 +21,67 @@ Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, appr
 
 The automated installation was launched already elevated for testing. Its documented original-user startup fallback was exercised: setup logged that startup could not be enabled in that launch context, then the normal-user helper successfully enabled it with exit code 0. This is not evidence that the ordinary double-click install path needs a second action; verify that path separately.
 
-## Performance
+## Signed v0.1.1 pilot verified on September 8
+
+The first publisher-signed pilot installer is
+`DLB-Precision-Monitor-0.1.1-Setup.exe`, 7,429,968 bytes. Its SHA256 is:
+
+```text
+5dc174d7af619dd4fc6ee45ae610916d6112f067bd617d57244008a4188b986a
+```
+
+- Source builds completed with zero warnings/errors. Prebuild checks passed all
+  18 codec/client, 15 sensor-selection and 25 widget assertions.
+- Setup and the temporary uninstaller embedded by Inno passed build-time
+  signature verification with zero warnings/errors.
+- The four installed first-party files (`DlbPrecision.Monitor.exe`,
+  `DlbPrecision.Service.exe`, `DlbPrecision.Shared.dll` and
+  `DlbPrecision.Sensors.dll`) report version 0.1.1.0. Those files and the installed
+  `unins000.exe` passed SignTool and Authenticode verification: Valid signatures,
+  the exact publisher **DLB Precision, LLC**, and timestamps.
+- All 19 installed runtime hash checks passed. Installed first-party files match
+  the signed staging files. The original PawnIO payload still matches its pinned
+  vendor-manifest hash.
+- An upgrade from the local unsigned v0.1.0 build containing the Settings Close
+  fix to signed v0.1.1 completed with exit code 0 and no restart required. Setup
+  used `/SILENT` from a non-elevated parent. All four service-configuration
+  commands returned 0; `DlbPrecisionSensors` was running with Automatic startup.
+- All 22 codec/client and installed-service integration assertions passed. The
+  installed service returned all seven readings with `Status=ok` and no warnings
+  on the same Ryzen 9 9950X3D / RTX 5090 test PC.
+- All 25 installed-widget smoke assertions passed, including actual modeless
+  Settings Close and disposal behavior.
+- Restart Manager closed the previous widget during upgrade. The existing
+  desktop shortcut still targeted the installed monitor without arguments and
+  launched the responding v0.1.1 application. The upgrade preserved the previous
+  desktop-task choice; it did not create a new public-desktop shortcut. The fresh
+  installation desktop-shortcut default is confirmed in installer source, not
+  by a clean-install test.
+- The settings file's SHA256 was unchanged after upgrade. The existing user's
+  startup command was preserved and still targeted the installed application;
+  the log contained no startup-fallback warning. This is preservation evidence,
+  not a fresh startup-configuration test.
+- The signed-pilot installation notes were installed correctly.
+
+This verifies that specific upgrade path on a PC with PawnIO already installed.
+It does not establish clean installation, normal double-click setup, reboot or
+uninstall behavior. A valid publisher signature identifies DLB; it does not
+guarantee immediate SmartScreen reputation. The historical v0.1.0 release remains
+unsigned with its original assets and checksum.
+
+## September 7 baseline performance
 
 Measurements include the installed service and visible widget together. CPU percentages normalize across all 32 logical processors. Memory reports both summed working set (which can double-count shared pages) and private bytes. Peak CPU is the largest one-second sample, not a sub-second trace.
 
 At 1-second refresh, a 60-second desktop run averaged 0.0129% total CPU (largest one-second sample 0.1455%), 77.76 MiB private memory, and 112.61 MiB summed working set. Peak private memory was 81.57 MiB; peak working set was 116.68 MiB. Evidence: [performance-1s.json](validation/performance-1s.json).
 
-A diagnostic 2-second run kept the Settings window open because a live-test Close-button bug was discovered. Its higher memory/CPU is not a like-for-like refresh comparison. That run is preserved as [performance-2s-settings-open.json](validation/performance-2s-settings-open.json). The Close bug and resource disposal have been fixed and regression tested; a fresh economy run is pending installation of that update.
+A diagnostic 2-second run kept the Settings window open because a live-test Close-button bug was discovered. Its higher memory/CPU is not a like-for-like refresh comparison. That run is preserved as [performance-2s-settings-open.json](validation/performance-2s-settings-open.json). The Close bug and resource disposal have been fixed and regression tested in the installed v0.1.1 build; a fresh 2-second measurement remains pending. These earlier performance measurements are not a new v0.1.1 performance test.
 
 ## Remaining before customer release
 
-- Test clean Windows 11 installation where PawnIO was not already present, normal double-click setup/startup, restart/sign-in, repair/upgrade, and uninstall.
+- Test clean Windows 11 installation where PawnIO was not already present, normal double-click setup/startup, restart/sign-in, repair, and uninstall. The specific unsigned v0.1.0-to-signed-v0.1.1 upgrade above passed; other installation states still need coverage.
 - Validate other Intel/AMD CPUs and AMD/Intel GPUs, multi-GPU systems, and laptops as applicable to pilot PCs. Current sensor compatibility evidence covers only this machine.
 - Physically test mixed-DPI/multiple-display movement, monitor disconnect/reconnect, sleep/resume, and game-focus shortcut behavior on the pilot setups.
 - Run iRacing, ACC, and COD with the widget on the other display. No title-specific gaming session or FPS-impact test has been performed.
-- Obtain DLB publisher signing before a customer release; the pilot DLB binaries are unsigned. Never substitute silent trust-certificate installation or weaker Windows security settings.
 
 Same-screen exclusive-fullscreen rendering was explicitly excluded by the user's final second-monitor clarification. There is no missing game-overlay engine in this scope.
