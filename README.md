@@ -8,11 +8,19 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-Download `DLB-Precision-Monitor-0.1.0-Setup.exe` from the [v0.1.0 pilot release](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) and run it normally (double-click). The repository and installer are public; no GitHub account is needed to download. A SHA256 checksum file accompanies the installer.
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.0/DLB-Precision-Monitor-0.1.0-Setup.exe)**
 
-Accept Windows administrator approval for setup. The installer includes the signed PawnIO hardware-access setup if needed, the sensor service, and the widget. Windows 11 already contains the .NET Framework runtime it uses. Local builds produce the same installer filename under `artifacts/installer/`.
+This public pilot needs no GitHub account. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) is an optional checksum, not another installer.
 
-The current pilot's DLB installer and application are unsigned. The bundled PawnIO driver installer keeps its original publisher signature. A DLB signing identity and broader clean-PC testing are release work before customer distribution.
+1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
+2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
+3. Choose **Yes** on the Windows administrator prompt, then follow setup. The single installer includes the widget, sensor service, and signed PawnIO setup if needed; no separate hardware-monitoring program is required.
+
+These instructions apply to reputation warnings. If Windows names a virus or threat, or provides no **Run anyway** option, stop and send DLB the exact message. Keep Windows Security enabled.
+
+The pilot's DLB installer and application are unsigned; **Unknown publisher** is expected on its administrator prompt. DLB publisher verification is in progress. Signing and broader clean-PC testing remain required before customer distribution. The bundled PawnIO installer retains its original signature. [Microsoft explains these reputation warnings](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
+
+Windows 11 already contains the .NET Framework runtime this app uses. Local builds place the installer under `artifacts/installer/`.
 
 ## Use
 
