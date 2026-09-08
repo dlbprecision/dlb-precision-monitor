@@ -3,12 +3,12 @@
 Build an unsigned local installer from the repository root with:
 
 ```powershell
-powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -Version 0.1.1 -OutputDirectory .\artifacts\unsigned-0.1.1-attempt-1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\Build-Installer.ps1 -Version 0.1.2 -OutputDirectory .\artifacts\unsigned-0.1.2-attempt-1
 ```
 
 This needs a .NET SDK on the **build computer**, network access for restore and the first tool download, and the Windows trust service to validate signed payloads. End-user Windows 11 computers already include the .NET Framework runtime used by this application. No separate desktop monitoring program is required. The script downloads the compiler in its official portable mode into `.tools`; it does not install the monitor, driver, or service on the build machine.
 
-This command outputs `artifacts/unsigned-0.1.1-attempt-1/DLB-Precision-Monitor-0.1.1-Setup.exe` and a SHA256 sidecar. Omitting `-OutputDirectory` uses `artifacts/installer`. Choose a new output directory for each attempt; the script refuses to overwrite an existing installer or checksum. `-Version` applies to the application builds and setup label. `-SkipBuild` reuses Release outputs and checks their version, but cannot establish source freshness; release builds should rebuild. `-IsccPath` can select an existing trusted Inno compiler. The default compiler and PawnIO downloads are pinned by SHA256 and signing-certificate thumbprint in `vendor/manifest.json`; both checks must pass. A changed upstream certificate/release requires deliberate manifest review.
+This command outputs `artifacts/unsigned-0.1.2-attempt-1/DLB-Precision-Monitor-0.1.2-Setup.exe` and a SHA256 sidecar. Omitting `-OutputDirectory` uses `artifacts/installer`. Choose a new output directory for each attempt; the script refuses to overwrite an existing installer or checksum. `-Version` applies to the application builds and setup label. `-SkipBuild` reuses Release outputs and checks their version, but cannot establish source freshness; release builds should rebuild. `-IsccPath` can select an existing trusted Inno compiler. The default compiler and PawnIO downloads are pinned by SHA256 and signing-certificate thumbprint in `vendor/manifest.json`; both checks must pass. A changed upstream certificate/release requires deliberate manifest review.
 
 Publisher signing requires `-Sign` and the tool, metadata and expected-publisher parameters documented in [code signing](../docs/CODE-SIGNING.md). Default builds remain unsigned. Signed builds fail if signing or timestamp verification fails; they do not fall back to unsigned output. Signing tools and credentials belong on the build computer and are not packaged for users.
 

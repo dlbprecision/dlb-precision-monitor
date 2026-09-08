@@ -97,6 +97,16 @@ namespace DlbPrecision.Monitor
                     TextRenderer.DrawText(graphics, footerText, actualFont, textBounds, Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
                 }
             }
+            if (!settings.PositionLocked)
+            {
+                using (var gripPen = new Pen(Border, Math.Max(1, dpiScale)))
+                    for (int index = 1; index <= 3; index++)
+                    {
+                        float inset = 3 * index * dpiScale;
+                        graphics.DrawLine(gripPen, bounds.Right - 2 * dpiScale - inset, bounds.Bottom - 2 * dpiScale,
+                            bounds.Right - 2 * dpiScale, bounds.Bottom - 2 * dpiScale - inset);
+                    }
+            }
         }
 
         private static void DrawReading(Graphics graphics, RectangleF tile, Reading value, string label, float dpiScale)

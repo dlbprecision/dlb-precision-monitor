@@ -83,7 +83,7 @@ namespace DlbPrecision.Monitor
             Render(Path.Combine(directory, "widget-unavailable.png"), new Size(861, 128), settings, null, "Sensors unavailable · right-click for settings", 1, false);
             settings.Fahrenheit = true;
             Render(Path.Combine(directory, "widget-fahrenheit-sample.png"), new Size(861, 128), settings, sample, "", 1, true);
-            settings.Fahrenheit = false; settings.Vertical = true;
+            settings.Fahrenheit = false; settings.Vertical = true; settings.Width = 144; settings.Height = 716;
             Render(Path.Combine(directory, "widget-vertical-sample.png"), new Size(144, 716), settings, sample, "", 1, true);
             using (var previewIcon = BrandIcon.Load())
             using (var form = new SettingsForm(settings, sample, "Sample data for appearance preview. Sensor service is not being queried."))
@@ -155,11 +155,57 @@ namespace DlbPrecision.Monitor
             Rectangle leftDisplay = new Rectangle(-1920, 0, 1920, 1080);
             Rectangle leftWidget = new Rectangle(-1500, 300, 861, 128);
             verify(WindowPlacement.Fit(leftWidget, new[] { area, leftDisplay }, new Size(590, 96)) == leftWidget, "Valid negative monitor coordinates are preserved");
+            verify(WidgetSizing.GetSize(false, 75, 1) == new Size(646, 96), "Compact slider setting scales all horizontal tiles");
+            verify(WidgetSizing.GetSize(true, 75, 1) == new Size(108, 537), "Compact slider setting supports vertical layout");
+            verify(WidgetSizing.GetSize(false, 200, 1) == new Size(1722, 256), "Large slider setting doubles widget dimensions");
+            verify(WidgetSizing.GetSize(false, 100, 1.5f) == new Size(1292, 192), "Widget size follows its own display DPI");
+            Rectangle custom = new Rectangle(-1500, 250, 900, 150);
+            verify(WidgetSizing.Apply(custom, false, false, null, 1, new[] { area, leftDisplay }) == custom,
+                "Applying unrelated settings preserves custom edge-dragged dimensions and display");
+            Rectangle compact = WidgetSizing.Apply(custom, false, false, 75, 1, new[] { area, leftDisplay });
+            verify(compact.Location == custom.Location && compact.Size == new Size(646, 96), "Explicit slider size is honored on a secondary display");
+            Rectangle compactVertical = WidgetSizing.Apply(compact, false, true, null, 1, new[] { area, leftDisplay });
+            Rectangle compactAgain = WidgetSizing.Apply(compactVertical, true, false, null, 1, new[] { area, leftDisplay });
+            verify(compactVertical.Size == new Size(108, 537) && compactAgain.Size == compact.Size, "Layout round-trip preserves compact size");
+            Rectangle smallDisplay = new Rectangle(0, 0, 800, 600);
+            verify(smallDisplay.Contains(WidgetSizing.Apply(new Rectangle(500, 400, 646, 96), false, false, 200, 1, new[] { smallDisplay })),
+                "Requested large size remains reachable within a small display");
+            using (var sizingForm = new SettingsForm(new MonitorSettings(), null, "Sizing regression; no preferences are written."))
+            {
+                sizingForm.ShowInTaskbar = false;
+                sizingForm.StartPosition = FormStartPosition.Manual;
+                sizingForm.Location = new Point(-32000, -32000);
+                sizingForm.Opacity = 0;
+                sizingForm.Show();
+                sizingForm.ClientSize = new Size(490, 450);
+                sizingForm.PerformLayout();
+                var settingsContent = (Panel)sizingForm.Controls["SettingsContent"];
+                verify(settingsContent.VerticalScroll.Visible && !settingsContent.HorizontalScroll.Visible && sizingForm.Controls["CloseSettings"].Bottom <= sizingForm.ClientSize.Height,
+                    "Small settings window scrolls vertically while keeping Close visible without horizontal overflow");
+                var slider = (TrackBar)sizingForm.Controls.Find("WidgetSize", true).Single();
+                var requests = new List<int?>();
+                bool reject = false;
+                sizingForm.ApplySettings = (next, startup, requested) => { requests.Add(requested); return reject ? "Test save failure" : ""; };
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                verify(requests.Count == 1 && !requests.Last().HasValue, "Opening Settings and applying does not reset custom size");
+                slider.Value = 75;
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                verify(requests.Last() == 75, "Settings Apply delivers an explicit compact size request");
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                verify(!requests.Last().HasValue, "Later unrelated Apply does not repeat a size request");
+                reject = true; slider.Value = 150;
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                reject = false;
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                verify(requests.Last() == 150, "A failed Apply retains the requested size for retry");
+                ((Button)sizingForm.Controls["CloseSettings"]).PerformClick();
+                verify(sizingForm.IsDisposed, "Close still works with scrollable size settings");
+            }
             SensorSnapshot sample = SampleSnapshot();
             sample.Gpus.Add(new GpuSnapshot { Id = "second", Name = "Second GPU", LoadPercent = 73 });
             verify(WidgetRenderer.SelectGpu(sample, "second")?.LoadPercent == 73, "GPU selection chooses the requested hardware");
             verify(WidgetRenderer.SelectGpu(sample, "removed")?.Id == "sample-gpu", "Removed GPU selection falls back to detected hardware");
-            var settings = new MonitorSettings { Fahrenheit = true, Vertical = true, OpacityPercent = 68, GpuId = "second", HotkeyKey = (int)Keys.F9 };
+            var settings = new MonitorSettings { Fahrenheit = true, Vertical = true, Width = 108, Height = 537, OpacityPercent = 68, GpuId = "second", HotkeyKey = (int)Keys.F9 };
             string tempDirectory = Path.Combine(Path.GetTempPath(), "DlbPrecisionMonitorTests-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tempDirectory);
             try
@@ -168,6 +214,7 @@ namespace DlbPrecision.Monitor
                 SettingsStore.Save(settings, path);
                 MonitorSettings loaded = SettingsStore.Load(path, out string warning);
                 verify(warning == "" && loaded.Fahrenheit && loaded.Vertical && loaded.OpacityPercent == 68 && loaded.GpuId == "second" && loaded.HotkeyKey == (int)Keys.F9, "Display preferences and programmable shortcut persist together");
+                verify(loaded.Width == 108 && loaded.Height == 537, "Chosen widget size persists across restart");
                 settings.OpacityPercent = 80;
                 SettingsStore.Save(settings, path);
                 verify(SettingsStore.Load(path, out warning).OpacityPercent == 80, "Existing preferences are atomically replaced");

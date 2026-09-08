@@ -14,7 +14,7 @@ runtime and the Visual C++ runtime. Use official Microsoft packages, verify thei
 provenance, and record the versions used for a release. These tools can be kept
 under the ignored `.tools` directory; do not add them to application dependencies.
 
-The v0.1.1 pilot was signed with Windows SDK BuildTools 10.0.28000.2705,
+The v0.1.1 and v0.1.2 pilots were signed with Windows SDK BuildTools 10.0.28000.2705,
 Microsoft.ArtifactSigning.Client 1.0.128 and Azure CLI 2.90.0. Inno's signing
 wrapper uses the same PowerShell edition as the parent build, so inherited
 PowerShell module paths stay compatible.
@@ -50,8 +50,8 @@ uses a new staging directory and never deletes earlier build artifacts.
 
 ```powershell
 $signingBuild = @{
-    Version = '0.1.1'
-    OutputDirectory = '.\artifacts\release-0.1.1-attempt-1'
+    Version = '0.1.2'
+    OutputDirectory = '.\artifacts\release-0.1.2-attempt-1'
     Sign = $true
     SignToolPath = '<full-path-to-x64-signtool.exe>'
     DlibPath = '<full-path-to-x64-Azure.CodeSigning.Dlib.dll>'

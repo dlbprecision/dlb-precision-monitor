@@ -8,9 +8,9 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.1/DLB-Precision-Monitor-0.1.1-Setup.exe)**
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.2/DLB-Precision-Monitor-0.1.2-Setup.exe)**
 
-**v0.1.1 is the first publisher-signed pilot**, with DLB Precision, LLC signatures and timestamps on setup, the uninstaller and DLB's application files. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.1) is an optional checksum, not another installer.
+**v0.1.2 adds a widget size slider.** Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.2) is an optional checksum, not another installer.
 
 1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
@@ -20,13 +20,15 @@ These instructions apply to reputation warnings. If Windows names a virus or thr
 
 A publisher signature identifies DLB; it does not guarantee immediate SmartScreen trust, so new downloads may still show reputation warnings. The bundled PawnIO installer retains its original signature. Broader clean-PC and hardware testing remain required before general customer distribution. [Microsoft explains these reputation warnings](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/smartscreen-reputation).
 
-The earlier [v0.1.0 pilot](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) remains available as an unsigned historical release. Its original download and checksum are unchanged.
+The earlier [v0.1.0 pilot](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.0) remains available as an unsigned historical release. [v0.1.1](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.1) was the first publisher-signed pilot. Both releases retain their original downloads and checksums.
 
 Windows 11 already contains the .NET Framework runtime this app uses. Local builds place the installer under `artifacts/installer/`.
 
 ## Use
 
-- Drag the widget to the desired monitor. Drag any edge/corner to resize.
+- Right-click the widget, open **Settings**, move the **Widget size** slider from **75% to 200%**, then click **Apply**. Sizing works in horizontal and vertical layouts, and the resulting dimensions are saved.
+- For a custom shape, unlock position/size and drag any edge or corner. Applying unrelated settings preserves those custom dimensions unless you request a size or layout change.
+- Drag the unlocked widget to the desired monitor. Position/size locking prevents dragging and edge/corner resizing.
 - Right-click for settings, horizontal/vertical layout, position/size locking, recovery to the primary screen, or Exit.
 - Default show/hide shortcut: **Ctrl+Alt+F10**. Change it in Settings by selecting the shortcut field and pressing a new combination, then Apply. Conflicts and reserved keys are rejected.
 - One Celsius/Fahrenheit switch changes both temperatures.
@@ -59,7 +61,7 @@ On a Windows development machine with a .NET SDK:
 dotnet build DlbPrecision.sln -c Release
 .\scripts\Test.ps1
 .\scripts\Test.ps1 -Integration # Requires installed sensor service
-.\scripts\Build-Installer.ps1 -Version 0.1.1 -OutputDirectory .\artifacts\unsigned-0.1.1-attempt-1
+.\scripts\Build-Installer.ps1 -Version 0.1.2 -OutputDirectory .\artifacts\unsigned-0.1.2-attempt-1
 ```
 
 The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. The command above makes an **unsigned local build**; release signing is opt-in and requires DLB's approved signing profile. See [installer build instructions](installer/README.md) and [code-signing instructions](docs/CODE-SIGNING.md). Use a new output directory for each attempt; existing installer files and checksums are never overwritten.

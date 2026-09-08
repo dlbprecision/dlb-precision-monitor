@@ -7,7 +7,8 @@ namespace DlbPrecision.Monitor
     internal static class NativeMethods
     {
         public const uint ModAlt = 1, ModControl = 2, ModShift = 4, ModWin = 8, ModNoRepeat = 0x4000;
-        public const int WmHotkey = 0x0312, WmNcHitTest = 0x0084, WmDisplayChange = 0x007E;
+        public const int WmHotkey = 0x0312, WmNcHitTest = 0x0084, WmNcCalcSize = 0x0083, WmDisplayChange = 0x007E;
+        public const int WsThickFrame = 0x00040000;
         public const int HtClient = 1, HtCaption = 2, HtLeft = 10, HtRight = 11, HtTop = 12, HtTopLeft = 13, HtTopRight = 14, HtBottom = 15, HtBottomLeft = 16, HtBottomRight = 17;
         [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool RegisterHotKey(IntPtr handle, int id, uint modifiers, uint key);
         [DllImport("user32.dll", SetLastError = true)] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool UnregisterHotKey(IntPtr handle, int id);

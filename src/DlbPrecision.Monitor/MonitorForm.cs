@@ -102,7 +102,18 @@ namespace DlbPrecision.Monitor
         }
 
         private float DpiScale => DeviceDpi / 96f;
-        private Size WidgetMinimum => settings.Vertical ? new Size((int)(108 * DpiScale), (int)(486 * DpiScale)) : new Size((int)(590 * DpiScale), (int)(96 * DpiScale));
+        private Size WidgetMinimum => WidgetSizing.MinimumSize(settings.Vertical, DpiScale);
+
+        protected override CreateParams CreateParams
+        {
+            get
+            {
+                CreateParams parameters = base.CreateParams;
+                // Windows needs the sizing style as well as edge hit tests to resize the widget.
+                parameters.Style |= NativeMethods.WsThickFrame;
+                return parameters;
+            }
+        }
 
         private void RestoreSavedBounds()
         {
@@ -140,12 +151,10 @@ namespace DlbPrecision.Monitor
             restoring = true;
             try
             {
-                // Transpose the overall shape; all seven tiles keep their display order.
-                int oldWidth = Width, oldHeight = Height;
+                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, vertical, null, DpiScale, Screen.AllScreens.Select(s => s.WorkingArea).ToArray());
                 settings.Vertical = vertical;
                 MinimumSize = WidgetMinimum;
-                Size target = vertical ? new Size(Math.Max(oldHeight, (int)(144 * DpiScale)), Math.Max((int)(660 * DpiScale), oldWidth - (int)(160 * DpiScale))) : new Size(Math.Max((int)(861 * DpiScale), oldHeight + (int)(160 * DpiScale)), Math.Max((int)(128 * DpiScale), oldWidth));
-                Bounds = WindowPlacement.Fit(new Rectangle(Location, target), Screen.AllScreens.Select(s => s.WorkingArea).ToArray(), MinimumSize);
+                Bounds = nextBounds;
                 UpdateBoundsSettings();
                 ApplyWindowOptions();
             }
@@ -193,19 +202,21 @@ namespace DlbPrecision.Monitor
             }
             if (!hotkeyRegistered) text += "\nShortcut unavailable: another application may be using it.";
             if (!string.IsNullOrEmpty(settingsWarning)) text += "\n" + settingsWarning;
+            text += settings.PositionLocked ? "\nDragging is locked. Use Size in Settings to resize." : "\nResize: drag an edge or use Size in Settings.";
             return text;
         }
 
         private void OpenSettings()
         {
             if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
-            settingsForm = new SettingsForm(settings, snapshot, DiagnosticsText()) { Icon = Icon, TopMost = TopMost };
+            UpdateBoundsSettings();
+            settingsForm = new SettingsForm(settings, snapshot, DiagnosticsText(), DpiScale) { Icon = Icon, TopMost = TopMost };
             settingsForm.ApplySettings = ApplySettings;
             settingsForm.FormClosed += (sender, args) => settingsForm = null;
             settingsForm.Show();
         }
 
-        private string ApplySettings(MonitorSettings next, bool enableStartup)
+        private string ApplySettings(MonitorSettings next, bool enableStartup, int? requestedSizePercent)
         {
             next.Normalize();
             bool hotkeyChanged = !hotkeyRegistered || settings.HotkeyKey != next.HotkeyKey || settings.HotkeyModifiers != next.HotkeyModifiers;
@@ -216,20 +227,24 @@ namespace DlbPrecision.Monitor
             try
             {
                 if (StartupRegistration.IsEnabled() != enableStartup) StartupRegistration.SetEnabled(enableStartup);
-                bool orientationChanged = settings.Vertical != next.Vertical;
-                bool nextVertical = next.Vertical;
+                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, next.Vertical, requestedSizePercent, DpiScale, Screen.AllScreens.Select(s => s.WorkingArea).ToArray());
                 // Save first so a filesystem error leaves the running configuration intact.
-                next.Left = Left; next.Top = Top; next.Width = Width; next.Height = Height;
+                next.Left = nextBounds.Left; next.Top = nextBounds.Top; next.Width = nextBounds.Width; next.Height = nextBounds.Height;
                 SettingsStore.Save(next, SettingsStore.DefaultPath);
                 if (hotkeyChanged)
                 {
                     if (hotkeyRegistered) NativeMethods.UnregisterHotKey(Handle, hotkeyId);
                     hotkeyId = nextHotkeyId; hotkeyRegistered = true;
                 }
-                if (orientationChanged) next.Vertical = settings.Vertical;
                 settings = next;
-                if (orientationChanged) ChangeOrientation(nextVertical);
-                ApplyWindowOptions();
+                restoring = true;
+                try
+                {
+                    MinimumSize = WidgetMinimum;
+                    Bounds = nextBounds;
+                    ApplyWindowOptions();
+                }
+                finally { restoring = false; }
                 Save();
                 settingsWarning = "";
                 return "";
@@ -284,11 +299,14 @@ namespace DlbPrecision.Monitor
 
         protected override void WndProc(ref Message message)
         {
+            // Keep the full client area and DLB's borderless appearance with native resizing enabled.
+            if (message.Msg == NativeMethods.WmNcCalcSize) { message.Result = IntPtr.Zero; return; }
             if (message.Msg == NativeMethods.WmHotkey && message.WParam.ToInt32() == hotkeyId) { ToggleVisible(); return; }
             if (message.Msg == ActivateMessage) { if (!Visible) ToggleVisible(); else RecoverPosition(); return; }
             if (message.Msg == NativeMethods.WmDisplayChange && ready) BeginInvoke(new Action(RestoreVisibleBounds));
-            if (message.Msg == NativeMethods.WmNcHitTest && !settings.PositionLocked)
+            if (message.Msg == NativeMethods.WmNcHitTest)
             {
+                if (settings.PositionLocked) { message.Result = new IntPtr(NativeMethods.HtClient); return; }
                 long raw = message.LParam.ToInt64();
                 Point point = PointToClient(new Point(unchecked((short)(raw & 0xffff)), unchecked((short)((raw >> 16) & 0xffff))));
                 int edge = Math.Max(5, (int)(6 * DpiScale));
