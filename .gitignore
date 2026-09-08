@@ -1,0 +1,15 @@
+**/bin/
+**/obj/
+.tools/
+artifacts/
+installer/payload/
+/installer/vendor/*.exe
+/installer/vendor/*.zip
+*.user
+*.suo
+.vs/
+.env
+.env.*
+*.pfx
+*.p12
+*.key

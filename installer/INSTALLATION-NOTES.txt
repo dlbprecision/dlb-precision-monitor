@@ -1,0 +1,28 @@
+DLB Precision Monitor - private pilot
+
+One setup installs the monitor and its DLB Precision Sensors service. Windows
+administrator approval is required. Normal monitor launches do not need elevation.
+The service reads sensors only while the monitor requests them.
+
+Setup includes the unmodified, signed official PawnIO 2.2.0 hardware-access
+installer. It installs PawnIO only if it is absent. Existing PawnIO installations
+are preserved, without replacing or upgrading a shared driver. If the existing
+driver cannot supply readings, the monitor will report unavailable sensors.
+
+Uninstall removes DLB's installed files and DLB Precision Sensors service. PawnIO
+is a shared dependency and remains installed because other applications may use
+it. When no other applications need it, PawnIO can be removed separately from
+Windows Settings > Apps > Installed apps.
+
+Open setup normally (double-click) to configure startup for the original user.
+For deployments launched from an already elevated terminal or another account,
+launch the monitor from the target user's Start menu and configure startup there.
+User display preferences are preserved on uninstall for a future reinstall.
+
+The monitor is designed to stay on another display while you play. It does not
+inject an overlay into games. Verify your games during the private pilot.
+
+Third-party notices, exact package versions, source locations and hashes are in
+the installed licenses and provenance directories. The outer DLB pilot installer
+and DLB application binaries are not publisher-signed yet. The PawnIO payload
+retains its original valid signature.

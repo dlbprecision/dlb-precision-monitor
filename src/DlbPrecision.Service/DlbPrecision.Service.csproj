@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../DlbPrecision.Shared/DlbPrecision.Shared.csproj" />
+    <ProjectReference Include="../DlbPrecision.Sensors/DlbPrecision.Sensors.csproj" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
+</Project>

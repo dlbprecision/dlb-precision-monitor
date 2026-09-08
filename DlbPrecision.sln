@@ -1,0 +1,64 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{F0A3554D-D737-4AA2-95CC-1060004921C8}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Shared", "src\DlbPrecision.Shared\DlbPrecision.Shared.csproj", "{E89673C6-C0DA-4988-901A-CF27853BEB4F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Sensors", "src\DlbPrecision.Sensors\DlbPrecision.Sensors.csproj", "{E9046719-D120-4069-A7DB-B62BA0D7E42F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Service", "src\DlbPrecision.Service\DlbPrecision.Service.csproj", "{5D1910BC-9E59-4F27-8B3D-774555CC14C2}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Monitor", "src\DlbPrecision.Monitor\DlbPrecision.Monitor.csproj", "{D33D1655-EDD2-4952-A319-81F8D44CBF5B}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Probe", "src\DlbPrecision.Probe\DlbPrecision.Probe.csproj", "{933F340A-B8BD-4810-9ACE-6C5018EDCF19}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{F04D9D72-0136-4DF0-B2C5-7D2BE78D4ECF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DlbPrecision.Tests", "tests\DlbPrecision.Tests\DlbPrecision.Tests.csproj", "{247F8BDB-11EA-4217-9916-3A2C1E73A1CB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{E89673C6-C0DA-4988-901A-CF27853BEB4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E89673C6-C0DA-4988-901A-CF27853BEB4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E89673C6-C0DA-4988-901A-CF27853BEB4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E89673C6-C0DA-4988-901A-CF27853BEB4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{E9046719-D120-4069-A7DB-B62BA0D7E42F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{E9046719-D120-4069-A7DB-B62BA0D7E42F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{E9046719-D120-4069-A7DB-B62BA0D7E42F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{E9046719-D120-4069-A7DB-B62BA0D7E42F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5D1910BC-9E59-4F27-8B3D-774555CC14C2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5D1910BC-9E59-4F27-8B3D-774555CC14C2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5D1910BC-9E59-4F27-8B3D-774555CC14C2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5D1910BC-9E59-4F27-8B3D-774555CC14C2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D33D1655-EDD2-4952-A319-81F8D44CBF5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D33D1655-EDD2-4952-A319-81F8D44CBF5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D33D1655-EDD2-4952-A319-81F8D44CBF5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D33D1655-EDD2-4952-A319-81F8D44CBF5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{933F340A-B8BD-4810-9ACE-6C5018EDCF19}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{933F340A-B8BD-4810-9ACE-6C5018EDCF19}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{933F340A-B8BD-4810-9ACE-6C5018EDCF19}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{933F340A-B8BD-4810-9ACE-6C5018EDCF19}.Release|Any CPU.Build.0 = Release|Any CPU
+		{247F8BDB-11EA-4217-9916-3A2C1E73A1CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{247F8BDB-11EA-4217-9916-3A2C1E73A1CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{247F8BDB-11EA-4217-9916-3A2C1E73A1CB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{247F8BDB-11EA-4217-9916-3A2C1E73A1CB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{E89673C6-C0DA-4988-901A-CF27853BEB4F} = {F0A3554D-D737-4AA2-95CC-1060004921C8}
+		{E9046719-D120-4069-A7DB-B62BA0D7E42F} = {F0A3554D-D737-4AA2-95CC-1060004921C8}
+		{5D1910BC-9E59-4F27-8B3D-774555CC14C2} = {F0A3554D-D737-4AA2-95CC-1060004921C8}
+		{D33D1655-EDD2-4952-A319-81F8D44CBF5B} = {F0A3554D-D737-4AA2-95CC-1060004921C8}
+		{933F340A-B8BD-4810-9ACE-6C5018EDCF19} = {F0A3554D-D737-4AA2-95CC-1060004921C8}
+		{247F8BDB-11EA-4217-9916-3A2C1E73A1CB} = {F04D9D72-0136-4DF0-B2C5-7D2BE78D4ECF}
+	EndGlobalSection
+EndGlobal
