@@ -5,6 +5,28 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## September 9 startup follow-up
+
+After a real restart, the installed v0.1.3 sensor service was Automatic and
+Running, but the widget had not opened. Windows' startup enumeration
+(`Win32_StartupCommand`) did not contain DLB. The Windows registry provider
+(`StdRegProv`) also reported the DLB Run value missing, although direct registry
+reads from the earlier execution environment reported it present. Those earlier
+registry-only checks did not establish a working Windows startup registration;
+the startup claims below must be read with this correction.
+
+The current user's Run entry was repaired through the Windows registry provider,
+pointing to the quoted installed monitor executable. Both a provider read-back
+and Windows' startup enumeration then confirmed the exact command. The installed
+widget also opened normally and remained responding. No application binary,
+service configuration, or display preference was changed for this repair.
+
+Future startup validation must check Windows' own startup enumeration as well as
+the application's setting. Actual automatic launch after the repair still needs
+confirmation at the next sign-in; manually launching the widget does not prove
+the sign-in trigger. This local repair does not establish a normal clean-install
+startup result for other PCs.
+
 ## Baseline completed on September 7
 
 - All six projects build in Release with zero warnings/errors.
