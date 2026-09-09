@@ -50,6 +50,13 @@ cancelled. No automatic shared-driver uninstall is performed.
   passed **40** smoke checks; **22** installed-service/client checks passed with
   all seven live readings and no warnings. The widget was relaunched and
   responded normally.
+- After the upgrade, all **19 installed runtime hashes** matched the signed
+  stage. The four DLB binaries reported version **0.1.4.0**; those files and
+  the installed uninstaller had valid **DLB Precision, LLC** signatures and
+  timestamps. Both Windows startup enumeration and its registry provider
+  confirmed the correct installed executable target. No fresh before-upgrade
+  settings hash was captured, so byte-for-byte settings preservation is not
+  claimed for this upgrade.
 
 Actual repair on a disposable Windows installation and retry on the affected sim
 PC remain untested. No working host driver was deliberately damaged to simulate
