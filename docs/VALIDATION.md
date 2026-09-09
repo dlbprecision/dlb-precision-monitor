@@ -36,6 +36,20 @@ cancelled. No automatic shared-driver uninstall is performed.
   application runtime libraries and the unchanged official PawnIO 2.2.0 payload.
   It was not installed or published. This verifies packaging and compilation,
   not a successful driver repair or a publisher-signed release.
+- The subsequent **publisher-signed installer** was built and independently
+  verified: **7,431,552 bytes**, SHA256
+  `ae0459cc6dd2e122e8b8de72870e78dd88d7037f5669f29b64d061350714b2d6`.
+  Setup and all four staged DLB binaries passed exact publisher and timestamp
+  verification, and all **19** staged runtime hashes matched their manifest.
+  The unchanged PawnIO input still matched its pinned vendor hash. Build-time
+  verification also covered the embedded uninstaller.
+- A real signed v0.1.3-to-v0.1.4 upgrade completed with **exit code 0** and no
+  restart. Its log confirmed the existing running, accessible PawnIO driver was
+  preserved, exercising the production device-access check on this PC. All four
+  DLB service-configuration commands returned 0. The installed v0.1.4 widget
+  passed **40** smoke checks; **22** installed-service/client checks passed with
+  all seven live readings and no warnings. The widget was relaunched and
+  responded normally.
 
 Actual repair on a disposable Windows installation and retry on the affected sim
 PC remain untested. No working host driver was deliberately damaged to simulate

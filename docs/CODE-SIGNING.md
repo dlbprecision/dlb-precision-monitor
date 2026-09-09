@@ -41,6 +41,31 @@ Replace the endpoint with Microsoft's exact endpoint for the account's region.
 `ExcludeCredentials` to restrict the credential chain to the intended identity,
 following Microsoft's instructions. Do not put client secrets into this file.
 
+## Azure CLI login on a local Windows account
+
+Microsoft's Security Defaults block device-code authentication for new tenants
+created on or after July 1, 2026. With Security Defaults enabled, do not use
+`az login --use-device-code`; it can produce `AADSTS530035` even after the browser
+accepts the account credentials. Keep tenant Security Defaults enabled and use
+[normal browser login](https://learn.microsoft.com/en-us/cli/azure/authenticate-azure-cli-interactively#sign-in-with-a-browser).
+See Microsoft's [device-code restriction](https://learn.microsoft.com/en-us/entra/fundamentals/security-defaults#block-device-code-flow).
+
+For a PC using a local Windows account, select browser authentication instead of
+Windows Web Account Manager with these process-only settings:
+
+```powershell
+$env:AZURE_CORE_ENABLE_BROKER_ON_WINDOWS = 'false'
+$env:AZURE_CORE_LOGIN_EXPERIENCE_V2 = 'off'
+& '<full-path-to-az.cmd>' login --tenant '<tenant-id>' --output none
+```
+
+Complete the sign-in and any MFA in the browser that opens, leaving the terminal
+running until login finishes. These [environment-variable overrides](https://learn.microsoft.com/en-us/cli/azure/azure-cli-configuration)
+apply to the current PowerShell process and its children; they do not change the
+Windows sign-in account, its password, or tenant security settings. Azure CLI
+refreshes its normal local sign-in cache. Portal login alone is still insufficient
+for command-line signing.
+
 ## Build
 
 Use a new output directory for each attempt. The script rejects an existing
