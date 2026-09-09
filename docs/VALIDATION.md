@@ -5,6 +5,44 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## September 9 v0.1.4 installer prerequisite checks
+
+The reported v0.1.3 setup screen stopped before installing the application because
+it considered the PawnIO footprint incomplete. That check required
+`PawnIOLib.dll`, which the embedded LHM 0.9.6 sensor library does not use; its
+sensor code opens the PawnIO device directly. The affected sim PC's precise
+driver state has not been inspected, so the screenshot alone does not establish
+whether it had a working driver with missing optional files or a driver problem.
+
+The replacement prerequisite flow checks for a running, accessible PawnIO driver,
+tries to start an existing stopped driver, and waits briefly for one already
+starting. If unavailable, setup runs the included, hash-verified official
+`PawnIO_setup.exe -install -silent`, then rechecks readiness. It preserves a
+detected newer version instead of downgrading it. A vendor exit of 3010 retains
+the restart requirement, including when setup must stop before completion.
+The DLB sensor service is stopped before repair and restored if preparation is
+cancelled. No automatic shared-driver uninstall is performed.
+
+- All **23 compiled prerequisite scenarios passed** using the real
+  `PawnIOPrerequisite.iss` decision helper with mocked readiness, version and
+  installation operations. Cases cover missing and partial installations,
+  existing-driver recovery, detected newer versions, operation failures,
+  readiness rechecks and restart retention. The harness contains no driver,
+  registry or service actions. [Results](validation/installer-v0.1.4-prerequisites.txt).
+- The full v0.1.4 application build and checks passed: **22** client/integration,
+  **15** sensor-selection and **40** widget checks. Integration used the existing
+  installed service and returned all seven readings with no warnings.
+- A complete unsigned validation installer compiled successfully, including the
+  application runtime libraries and the unchanged official PawnIO 2.2.0 payload.
+  It was not installed or published. This verifies packaging and compilation,
+  not a successful driver repair or a publisher-signed release.
+
+Actual repair on a disposable Windows installation and retry on the affected sim
+PC remain untested. No working host driver was deliberately damaged to simulate
+those cases. Driver readiness does not establish every hardware sensor's
+compatibility. The existing v0.1.3 performance results remain the latest measured
+results; this installer change adds no recurring application work.
+
 ## September 9 startup follow-up
 
 After a real restart, the installed v0.1.3 sensor service was Automatic and

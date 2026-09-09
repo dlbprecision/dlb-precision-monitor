@@ -1,4 +1,4 @@
-DLB Precision Monitor - unsigned pilot build
+DLB Precision Monitor 0.1.4 - unsigned pilot build
 
 For Windows 11 x64 PCs. This is a prerelease for testing, with broader hardware
 and installation testing still in progress.
@@ -8,9 +8,15 @@ administrator approval is required. Normal monitor launches do not need elevatio
 The service reads sensors only while the monitor requests them.
 
 Setup includes the unmodified, signed official PawnIO 2.2.0 hardware-access
-installer. It installs PawnIO only if it is absent. Existing PawnIO installations
-are preserved, without replacing or upgrading a shared driver. If the existing
-driver cannot supply readings, the monitor will report unavailable sensors.
+installer. It reuses an accessible existing driver and first tries to start a
+stopped driver. If the driver remains unavailable or is missing, setup runs the
+bundled official installer. A detected newer version is preserved instead of
+being replaced by the older bundle. Setup does not automatically uninstall PawnIO.
+
+If setup requests a Windows restart, follow its instructions. You may need to
+run this same DLB installer again after restarting to finish installation.
+No separate driver download is needed. If setup still cannot finish, send DLB
+the setup log. Sensors unsupported by the hardware or driver show as unavailable.
 
 Uninstall removes DLB's installed files and DLB Precision Sensors service. PawnIO
 is a shared dependency and remains installed because other applications may use

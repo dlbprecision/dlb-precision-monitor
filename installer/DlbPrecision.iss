@@ -5,7 +5,7 @@
   #define OutputDir "..\artifacts\installer"
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.1.3"
+  #define AppVersion "0.1.4"
 #endif
 #ifdef SignRelease
   #define InstallationNotes "SIGNED-INSTALLATION-NOTES.txt"
@@ -73,6 +73,7 @@ const
   SC_MANAGER_CONNECT = $0001;
   SERVICE_QUERY_STATUS = $0004;
   SERVICE_STOPPED = 1;
+  SERVICE_START_PENDING = 2;
   SERVICE_RUNNING = 4;
 
 type
@@ -94,13 +95,19 @@ function QueryServiceStatus(Service: THandle; var Status: TServiceStatus): Boole
   external 'QueryServiceStatus@advapi32.dll stdcall';
 function CloseServiceHandle(Handle: THandle): Boolean;
   external 'CloseServiceHandle@advapi32.dll stdcall';
+function OpenPawnIODevice(FileName: String; DesiredAccess, ShareMode: Cardinal;
+  SecurityAttributes: Integer; CreationDisposition, FlagsAndAttributes: Cardinal;
+  TemplateFile: THandle): THandle;
+  external 'CreateFileW@kernel32.dll stdcall';
+function ClosePawnIODevice(Handle: THandle): Boolean;
+  external 'CloseHandle@kernel32.dll stdcall';
 
 var
   PawnIORebootRequired: Boolean;
   ServiceStoppedForUpgrade: Boolean;
   StartupFailed: Boolean;
 
-function ServiceState: Cardinal;
+function NamedServiceState(Name: String): Cardinal;
 var
   Manager, Service: THandle;
   Status: TServiceStatus;
@@ -109,7 +116,7 @@ begin
   Manager := OpenSCManager(0, 0, SC_MANAGER_CONNECT);
   if Manager = 0 then Exit;
   try
-    Service := OpenService(Manager, SensorService, SERVICE_QUERY_STATUS);
+    Service := OpenService(Manager, Name, SERVICE_QUERY_STATUS);
     if Service = 0 then Exit;
     try
       if QueryServiceStatus(Service, Status) then Result := Status.CurrentState;
@@ -119,6 +126,11 @@ begin
   finally
     CloseServiceHandle(Manager);
   end;
+end;
+
+function ServiceState: Cardinal;
+begin
+  Result := NamedServiceState(SensorService);
 end;
 
 function RunSC(Arguments: String): Integer;
@@ -161,24 +173,79 @@ begin
     FileExists(ExpandConstant('{commonpf64}\PawnIO\PawnIOLib.dll'));
 end;
 
-function PawnIORegistered: Boolean;
+function PawnIODriverReady: Boolean;
 var
-  InstallLocation: String;
+  Device: THandle;
 begin
-  InstallLocation := ExpandConstant('{commonpf64}\PawnIO');
-  if not RegQueryStringValue(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO',
-    'InstallLocation', InstallLocation) then
-    RegQueryStringValue(HKLM32, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO',
-      'InstallLocation', InstallLocation);
-  { Registration is not a claim that all sensors work; the service validates access at runtime. }
-  Result := RegKeyExists(HKLM64, 'SYSTEM\CurrentControlSet\Services\PawnIO') and
-    FileExists(AddBackslash(InstallLocation) + 'PawnIOLib.dll');
+  Result := False;
+  if NamedServiceState('PawnIO') <> SERVICE_RUNNING then Exit;
+  { LHM 0.9.6 opens this driver directly and does not load PawnIOLib.dll.
+    Match its read/write + shared access without sending any hardware commands. }
+  Device := OpenPawnIODevice('\\?\GLOBALROOT\Device\PawnIO', $C0000000, 3, 0, 3, 0, 0);
+  if Device = THandle(-1) then Exit;
+  ClosePawnIODevice(Device);
+  Result := True;
 end;
 
-function PrepareToInstall(var NeedsRestart: Boolean): String;
+function PawnIOInstalledVersion: String;
 var
-  ExitCode: Integer;
+  Candidate: String;
+  Version, HighestVersion: Int64;
+begin
+  Result := '';
+  HighestVersion := 0;
+  if RegQueryStringValue(HKLM64, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO', 'DisplayVersion', Candidate) then
+    if StrToVersion(Candidate, Version) then begin HighestVersion := Version; Result := Candidate; end;
+  if RegQueryStringValue(HKLM32, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\PawnIO', 'DisplayVersion', Candidate) then
+    if StrToVersion(Candidate, Version) then
+      if ComparePackedVersion(Version, HighestVersion) > 0 then Result := Candidate;
+end;
+
+function TryStartExistingPawnIO: Boolean;
+var
+  Attempt, ExitCode: Integer;
+  State: Cardinal;
+begin
+  Result := False;
+  { Demand-start is the vendor's normal configuration, not an incomplete install. }
+  State := NamedServiceState('PawnIO');
+  if State = SERVICE_STOPPED then begin
+    ExitCode := RunSC('start PawnIO');
+    if (ExitCode <> 0) and (ExitCode <> 1056) then Exit;
+  end else if State <> SERVICE_START_PENDING then Exit;
+  for Attempt := 1 to 25 do begin
+    if PawnIODriverReady then begin Result := True; Exit; end;
+    Sleep(200);
+  end;
+end;
+
+function RunBundledPawnIO(var ExitCode: Integer): String;
+var
   DriverPath: String;
+  Attempt: Integer;
+begin
+  Result := '';
+  ExtractTemporaryFile('PawnIO_setup.exe');
+  DriverPath := ExpandConstant('{tmp}\PawnIO_setup.exe');
+  if CompareText(GetSHA256OfFile(DriverPath), PawnIOHash) <> 0 then begin
+    Result := 'The bundled sensor driver failed its integrity check. Download a fresh DLB setup.';
+    Exit;
+  end;
+  { Use the vendor's documented installation command; there is no -repair switch. }
+  if not Exec(DriverPath, '-install -silent', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
+    Result := 'The bundled sensor driver installer could not start. Restart Windows and retry this DLB installer. If it still fails, send DLB the setup log.';
+    Exit;
+  end;
+  if (ExitCode = 0) or (ExitCode = 3010) then
+    for Attempt := 1 to 25 do begin
+      if PawnIODriverReady then Exit;
+      Sleep(200);
+    end;
+end;
+
+#include "PawnIOPrerequisite.iss"
+
+function PrepareToInstall(var NeedsRestart: Boolean): String;
 begin
   Result := '';
   { A LocalSystem service must never execute out of a user-writable install folder. }
@@ -187,35 +254,15 @@ begin
     Result := 'DLB Precision Monitor must be installed in its protected Program Files location. Remove any /DIR override and run setup again.';
     Exit;
   end;
-  if PawnIOFootprintExists and not PawnIORegistered then begin
-    Result := 'An incomplete PawnIO installation was found. Repair that shared driver with its official installer, then retry DLB setup. DLB has not replaced or removed it.';
+  { Stop our own sensor client before any shared-driver repair. Other programs
+    may still use PawnIO; its official installer decides how to handle that. }
+  ServiceStoppedForUpgrade := ServiceStoppedForUpgrade or (ServiceState = SERVICE_RUNNING);
+  if not StopSensorService then begin
+    Result := 'DLB Precision Sensors did not stop. Close the monitor and retry setup.';
     Exit;
   end;
-  if not PawnIORegistered then begin
-    ExtractTemporaryFile('PawnIO_setup.exe');
-    DriverPath := ExpandConstant('{tmp}\PawnIO_setup.exe');
-    if CompareText(GetSHA256OfFile(DriverPath), PawnIOHash) <> 0 then begin
-      Result := 'The bundled sensor driver failed its integrity check. Download a fresh DLB setup.';
-      Exit;
-    end;
-    if not Exec(DriverPath, '-install -silent', '', SW_HIDE, ewWaitUntilTerminated, ExitCode) then begin
-      Result := 'The sensor driver installer could not start. See the setup log.';
-      Exit;
-    end;
-    if ExitCode = 3010 then PawnIORebootRequired := True
-    else if ExitCode <> 0 then begin
-      Result := 'The sensor driver could not be installed (code ' + IntToStr(ExitCode) + '). See the setup log.';
-      Exit;
-    end;
-    if not PawnIORegistered then begin
-      Result := 'PawnIO setup completed but its service and library could not be verified. Restart Windows if requested, then retry DLB setup.';
-      Exit;
-    end;
-  end else Log('Preserving registered shared PawnIO installation; sensor access is validated at runtime.');
-
-  ServiceStoppedForUpgrade := ServiceStoppedForUpgrade or (ServiceState = SERVICE_RUNNING);
-  if not StopSensorService then
-    Result := 'DLB Precision Sensors did not stop. Close the monitor and retry setup.';
+  Result := EnsurePawnIO(PawnIORebootRequired);
+  if (Result <> '') and PawnIORebootRequired then NeedsRestart := True;
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
