@@ -15,7 +15,7 @@ namespace DlbPrecision.Monitor
         public static readonly Color Surface = Color.FromArgb(25, 25, 31);
         public static readonly Color Blue = ColorTranslator.FromHtml("#2DA4F4");
         public static readonly Color Purple = ColorTranslator.FromHtml("#7B00FF");
-        private static readonly Color Label = Color.FromArgb(189, 184, 201);
+        private static readonly Color Label = Color.FromArgb(235, 235, 235);
         private static readonly Color Muted = Color.FromArgb(131, 125, 145);
         private static readonly Color Border = Color.FromArgb(53, 49, 63);
         private static readonly string[] Labels = { "CPU Temp", "CPU Load", "CPU Clock", "GPU Temp", "GPU Load", "GPU Clock", "RAM Load" };
@@ -94,7 +94,7 @@ namespace DlbPrecision.Monitor
                 using (var actualFont = new Font("Segoe UI", 9.2f * dpiScale, FontStyle.Regular, GraphicsUnit.Pixel))
                 {
                     // Pixel fonts keep this quiet footer consistent with the custom DPI-scaled tile layout.
-                    TextRenderer.DrawText(graphics, footerText, actualFont, textBounds, Muted, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
+                    TextRenderer.DrawText(graphics, footerText, actualFont, textBounds, sample || !string.IsNullOrEmpty(status) ? Muted : Label, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
                 }
             }
             if (!settings.PositionLocked)

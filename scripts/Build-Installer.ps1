@@ -1,7 +1,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')]
-    [string]$Version = '0.1.4',
+    [string]$Version = '0.1.5',
     [string]$IsccPath,
     [switch]$SkipBuild,
     [string]$OutputDirectory,

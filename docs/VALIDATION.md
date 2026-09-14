@@ -5,6 +5,36 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## September 13 v0.1.5 brighter labels
+
+All seven metric captions and the small DLB Precision footer now use neutral
+white `#EBEBEB`. The existing renderer handles both orientations; the change
+does not add dependencies, polling, or timers.
+
+- The existing application checks passed: **22** client/integration, **15**
+  sensor-selection and **40** widget checks. Builds had zero warnings/errors.
+- Horizontal, vertical, minimum-size and 150%-DPI renders were visually checked.
+  A separate invocation of the existing renderer exercised the branding footer
+  with sample readings, because the regular preview command replaces branding
+  with a SAMPLE DATA marker. Labels and branding were readable without clipping;
+  unavailable readings and status messages retained their muted color.
+- The signed v0.1.5 installer passed build-time publisher and timestamp checks,
+  including its embedded uninstaller and four first-party binaries. Its SHA256 is
+  `ba330400522de404877dc28261d83793daa37145189e4b4b1ca99c5f14c03b2d`.
+- The office PC upgrade from v0.1.4 completed with exit code **0**, all four service
+  configuration commands returned **0**, and no restart was needed. The installed
+  widget was reopened and responded normally.
+- Independent installed verification passed: all **19** runtime hashes and the
+  manifest matched the signed stage. The four DLB binaries reported **0.1.5.0**;
+  those files and the uninstaller had valid, timestamped **DLB Precision, LLC**
+  signatures. The installed widget passed **40** smoke checks. A fresh before/after
+  comparison confirmed identical settings-file hashes and an unchanged Windows
+  startup entry. The working shared PawnIO driver was preserved. Setup is
+  **7,433,088 bytes**.
+
+This is an appearance change. No new performance measurement or additional
+hardware, game, clean-install, or reboot testing is claimed.
+
 ## September 9 v0.1.4 installer prerequisite checks
 
 The reported v0.1.3 setup screen stopped before installing the application because
