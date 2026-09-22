@@ -1,12 +1,15 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO.Pipes;
 using System.Runtime.Serialization;
+using System.ServiceProcess;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using DlbPrecision.Shared;
+using DlbPrecision.Service;
 
 internal static class Program
 {
@@ -17,10 +20,11 @@ internal static class Program
         try
         {
             CodecTests();
+            SensorStartupTests();
             await ClientTests();
             if (Array.IndexOf(args, "--integration") >= 0)
                 await IntegrationTests(Array.IndexOf(args, "--allow-console-host") >= 0);
-            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, protocol, IPC timeouts/cancellation" +
+            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, driver startup/recovery, protocol, IPC timeouts/cancellation" +
                 (Array.IndexOf(args, "--integration") >= 0 ? ", live service" : "") + ").");
             return 0;
         }
@@ -60,6 +64,101 @@ internal static class Program
         data.ProtocolVersion = 999; rejected = false;
         try { SnapshotCodec.Decode(SnapshotCodec.Encode(data)); } catch (SerializationException) { rejected = true; }
         Check(rejected, "Protocol mismatch must fail explicitly.");
+    }
+
+    private static void SensorStartupTests()
+    {
+        int starts = 0, waits = 0, reads = 0;
+        string? warning = PawnIoDriver.EnsureRunning(() => { reads++; return ServiceControllerStatus.Running; },
+            () => starts++, _ => { waits++; return false; }, CancellationToken.None);
+        Check(warning == null && starts == 0 && waits == 0 && reads == 1, "A running driver must not be started or polled repeatedly.");
+
+        var order = new List<string>();
+        var state = ServiceControllerStatus.Stopped;
+        warning = PawnIoDriver.EnsureRunning(() => { order.Add("status"); return state; },
+            () => { order.Add("start"); state = ServiceControllerStatus.StartPending; },
+            _ => { order.Add("wait"); state = ServiceControllerStatus.Running; return false; }, CancellationToken.None);
+        Check(warning == null && string.Join(",", order) == "status,start,status,wait,status",
+            "A stopped driver must be started and confirmed running before sensor initialization can proceed.");
+
+        starts = waits = 0;
+        state = ServiceControllerStatus.StartPending;
+        warning = PawnIoDriver.EnsureRunning(() => state, () => starts++, _ =>
+        { waits++; state = ServiceControllerStatus.Running; return false; }, CancellationToken.None);
+        Check(warning == null && starts == 0 && waits == 1, "An already-starting driver must be awaited without a duplicate start.");
+
+        waits = 0;
+        warning = PawnIoDriver.EnsureRunning(() => ServiceControllerStatus.StartPending,
+            () => { throw new InvalidOperationException("Must not start twice"); }, milliseconds =>
+            { waits += milliseconds; return false; }, CancellationToken.None);
+        Check(warning != null && warning.Contains("StartPending") && waits == 1500,
+            "A stalled driver must have a bounded startup wait and an explicit warning.");
+
+        state = ServiceControllerStatus.Stopped;
+        warning = PawnIoDriver.EnsureRunning(() => state, () =>
+        { state = ServiceControllerStatus.Running; throw new InvalidOperationException("Already running", new Win32Exception(1056)); },
+            _ => false, CancellationToken.None);
+        Check(warning == null, "Another utility starting PawnIO concurrently must be treated as success after checking status.");
+
+        warning = PawnIoDriver.EnsureRunning(() => throw new InvalidOperationException("Missing", new Win32Exception(1060)),
+            () => { throw new Exception("Unexpected start"); }, _ => false, CancellationToken.None);
+        Check(warning != null && warning.Contains("not installed") && warning.Contains("bundled driver"),
+            "A missing driver must produce an actionable warning instead of aborting partial sensor initialization.");
+
+        warning = PawnIoDriver.EnsureRunning(() => ServiceControllerStatus.Stopped,
+            () => throw new InvalidOperationException("Blocked", new Win32Exception(577)), _ => false, CancellationToken.None);
+        Check(warning != null && warning.Contains("577"), "A blocked driver must preserve the Windows error for diagnosis.");
+
+        warning = PawnIoDriver.EnsureRunning(() => throw new UnauthorizedAccessException(), () => { }, _ => false, CancellationToken.None);
+        Check(warning != null && warning.Contains("UnauthorizedAccessException"), "Console-host access failures must not suppress other readings.");
+
+        using (var cancellation = new CancellationTokenSource())
+        {
+            bool cancelled = false;
+            try
+            {
+                PawnIoDriver.EnsureRunning(() => ServiceControllerStatus.StartPending, () => { },
+                    _ => { cancellation.Cancel(); return true; }, cancellation.Token);
+            }
+            catch (OperationCanceledException) { cancelled = true; }
+            Check(cancelled, "Stopping the service must interrupt a driver startup wait.");
+        }
+
+        var recovery = new SensorRecovery();
+        var partial = new SensorSnapshot
+        {
+            CpuLoadPercent = 20, RamUsedGb = 12,
+            Gpus = new List<GpuSnapshot> { new GpuSnapshot { ClockMhz = 510 } }
+        };
+        Check(!recovery.Observe(partial, 0) && recovery.Pending, "Missing CPU readings must schedule on-demand recovery.");
+        for (int second = 1; second < 10; second++)
+        {
+            recovery.Observe(partial, second * 1000);
+            if (recovery.TryBeginRetry(second * 1000)) throw new InvalidOperationException("Recovery ignored its cooldown.");
+        }
+        Check(recovery.TryBeginRetry(10000) && !recovery.TryBeginRetry(10000),
+            "Repeated failed samples must not postpone recovery or permit duplicate reopen attempts.");
+        recovery.Observe(SensorSnapshot.Unavailable("Constructor failed"), 10000);
+        Check(!recovery.TryBeginRetry(39999) && recovery.TryBeginRetry(40000),
+            "Even a failed reader constructor must respect recovery backoff.");
+        recovery.Observe(partial, 40000);
+        Check(!recovery.TryBeginRetry(99999) && recovery.TryBeginRetry(100000), "The last recovery attempt must use the longer cooldown.");
+        recovery.Observe(partial, 100000);
+        recovery.Observe(partial, 86400000);
+        Check(recovery.Exhausted && !recovery.TryBeginRetry(86400000), "Unsupported hardware must not trigger endless expensive rediscovery.");
+        Check(partial.CpuLoadPercent == 20 && partial.RamUsedGb == 12 && partial.Gpus[0].ClockMhz == 510,
+            "Recovery scheduling must preserve available Windows and GPU measurements.");
+
+        var healthy = new SensorSnapshot { CpuTemperatureC = 55, CpuClockMhz = 4800 };
+        Check(recovery.Observe(healthy, 86401000) && !recovery.Exhausted && !recovery.Pending,
+            "Successful CPU measurements must clear failed-startup state, regardless of unavailable GPU metrics.");
+        Check(!recovery.TryBeginRetry(long.MaxValue), "A healthy reader must not trigger periodic driver checks or reopen attempts.");
+        healthy.CpuClockMhz = null;
+        recovery.Observe(healthy, 86402000);
+        Check(recovery.Pending && !recovery.TryBeginRetry(86411999) && recovery.TryBeginRetry(86412000),
+            "Losing one CPU measurement after recovery must start a fresh bounded retry budget.");
+        recovery.Observe(new SensorSnapshot { CpuTemperatureC = 56, CpuClockMhz = 4700 }, 86412001);
+        Check(!recovery.Pending && !recovery.TryBeginRetry(long.MaxValue), "Readings that recover naturally must cancel pending recovery.");
     }
 
     private static async Task<SensorSnapshot> ReadFixture(byte[] payload, int delay = 0, string? pipeName = null, bool allowUninstalledHost = false)

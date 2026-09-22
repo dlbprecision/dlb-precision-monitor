@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><TargetFramework>net48</TargetFramework><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup><ProjectReference Include="../../src/DlbPrecision.Shared/DlbPrecision.Shared.csproj" /></ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../src/DlbPrecision.Service/SensorStartup.cs" Link="SensorStartup.cs" />
+    <Reference Include="System.ServiceProcess" />
+  </ItemGroup>
 </Project>

@@ -3,7 +3,7 @@ $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Push-Location $projectRoot
 try {
-    $projects = @('tests/DlbPrecision.Tests/DlbPrecision.Tests.csproj', 'src/DlbPrecision.Probe/DlbPrecision.Probe.csproj', 'src/DlbPrecision.Monitor/DlbPrecision.Monitor.csproj')
+    $projects = @('tests/DlbPrecision.Tests/DlbPrecision.Tests.csproj', 'src/DlbPrecision.Service/DlbPrecision.Service.csproj', 'src/DlbPrecision.Probe/DlbPrecision.Probe.csproj', 'src/DlbPrecision.Monitor/DlbPrecision.Monitor.csproj')
     foreach ($project in $projects) {
         & dotnet build $project -c Release --nologo
         if ($LASTEXITCODE -ne 0) { throw "Build failed: $project" }

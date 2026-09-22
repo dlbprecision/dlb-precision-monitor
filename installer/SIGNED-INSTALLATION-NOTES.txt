@@ -1,4 +1,4 @@
-DLB Precision Monitor 0.1.4 - signed pilot build
+DLB Precision Monitor 0.1.6 - signed pilot build
 
 For Windows 11 x64 PCs. This is a prerelease for testing, with broader hardware
 and installation testing still in progress.

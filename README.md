@@ -8,9 +8,9 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.5/DLB-Precision-Monitor-0.1.5-Setup.exe)**
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.6/DLB-Precision-Monitor-0.1.6-Setup.exe)**
 
-**v0.1.5 brightens the metric labels and small DLB Precision branding.** It includes the bundled driver setup improvements from v0.1.4. Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.5) is an optional checksum, not another installer.
+**v0.1.6 fixes CPU temperature and clock staying unavailable after startup when the sensor driver has not started.** It retains the brighter labels and bundled driver setup from previous releases. Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.6) is an optional checksum, not another installer.
 
 1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
@@ -72,7 +72,7 @@ dotnet build DlbPrecision.sln -c Release
 .\scripts\Test.ps1
 .\scripts\Test.ps1 -Integration # Requires installed sensor service
 .\scripts\Test-Installer.ps1 # Compiled prerequisite scenarios; no driver changes
-.\scripts\Build-Installer.ps1 -Version 0.1.5 -OutputDirectory .\artifacts\unsigned-0.1.5-attempt-1
+.\scripts\Build-Installer.ps1 -Version 0.1.6 -OutputDirectory .\artifacts\unsigned-0.1.6-attempt-1
 ```
 
 The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. The command above makes an **unsigned local build**; release signing is opt-in and requires DLB's approved signing profile. See [installer build instructions](installer/README.md) and [code-signing instructions](docs/CODE-SIGNING.md). Use a new output directory for each attempt; existing installer files and checksums are never overwritten.

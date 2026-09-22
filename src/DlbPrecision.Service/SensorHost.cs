@@ -20,7 +20,11 @@ namespace DlbPrecision.Service
         private readonly HashSet<NamedPipeServerStream> pipes = new HashSet<NamedPipeServerStream>();
         private readonly List<Task> workers = new List<Task>();
         private readonly Stopwatch cacheClock = Stopwatch.StartNew();
+        private readonly SensorRecovery recovery = new SensorRecovery();
         private SensorReader? reader;
+        private bool readerAttempted;
+        private string? driverWarning;
+        private string readerFailure = "Sensor initialization failed.";
         private byte[]? cache;
         private long lastSample = -1000;
         private bool disposed;
@@ -103,12 +107,35 @@ namespace DlbPrecision.Service
                 SensorSnapshot snapshot;
                 try
                 {
-                    if (reader == null) reader = new SensorReader();
-                    snapshot = reader.Read();
+                    if (!readerAttempted || recovery.TryBeginRetry(cacheClock.ElapsedMilliseconds))
+                    {
+                        readerAttempted = true;
+                        reader?.Dispose();
+                        reader = null;
+                        driverWarning = PawnIoDriver.EnsureRunning(stop.Token);
+                        stop.Token.ThrowIfCancellationRequested();
+                        reader = new SensorReader();
+                    }
+                    snapshot = reader == null ? SensorSnapshot.Unavailable(readerFailure) : reader.Read();
+                }
+                catch (OperationCanceledException) when (stop.IsCancellationRequested)
+                {
+                    return SnapshotCodec.Encode(SensorSnapshot.Unavailable("Sensor service is stopping."));
                 }
                 catch (Exception e)
                 {
-                    snapshot = SensorSnapshot.Unavailable("Sensor update failed (" + e.GetType().Name + "). Restart the sensor service.");
+                    readerFailure = "Sensor update failed (" + e.GetType().Name + ").";
+                    snapshot = SensorSnapshot.Unavailable(readerFailure);
+                }
+                bool cpuReady = recovery.Observe(snapshot, cacheClock.ElapsedMilliseconds);
+                if (cpuReady) driverWarning = null;
+                else
+                {
+                    if (driverWarning != null) snapshot.Warnings.Add(driverWarning);
+                    if (recovery.Pending)
+                        snapshot.Warnings.Add("DLB will retry sensor initialization automatically while the monitor is open.");
+                    else if (recovery.Exhausted)
+                        snapshot.Warnings.Add("Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");
                 }
                 snapshot.TimestampUtc = DateTime.UtcNow;
                 cache = SnapshotCodec.Encode(snapshot);

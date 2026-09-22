@@ -1,6 +1,6 @@
 # Sensor backend
 
-`SensorReader` is a serialized, disposable reader backed by LibreHardwareMonitorLib 0.9.6. Create one instance per service process and call `Read()` at the selected sampling interval. It starts no timer or background thread itself. Only CPU and GPU groups are opened; physical memory and total CPU busy time use Windows APIs. Hardware discovery occurs during construction, and sensor history retention is disabled, including sensors that activate later.
+`SensorReader` is a serialized, disposable reader backed by LibreHardwareMonitorLib 0.9.6. Reuse one healthy instance and call `Read()` at the selected sampling interval. It starts no timer or background thread itself. Only CPU and GPU groups are opened; physical memory and total CPU busy time use Windows APIs. Hardware discovery occurs during construction, and sensor history retention is disabled, including sensors that activate later. The sensor service ensures the installed PawnIO driver is running before opening the reader and makes bounded, demand-driven attempts to recreate an unsuccessful reader.
 
 Readings and fallbacks:
 

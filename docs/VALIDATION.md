@@ -5,6 +5,60 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## September 22 v0.1.6 CPU sensor startup recovery
+
+A user with a Ryzen 7 9850X3D reported CPU temperature and clock remaining
+unavailable after startup until reinstalling. They confirmed that starting
+PawnIO and restarting DLB Precision Sensors restored the readings without
+reinstalling. Source inspection found that setup started PawnIO, but the service
+previously opened sensors without ensuring the driver was running and retained
+an unsuccessful sensor reader indefinitely.
+
+The service now checks the installed PawnIO driver before opening sensors,
+starts it only when stopped, and waits up to 1.5 seconds for a pending start.
+Driver errors leave other available readings active and appear in diagnostics.
+If either CPU temperature or clock remains unavailable, the service can reopen
+the reader up to three times, waiting successively 10, 30 and 60 seconds between
+attempts. These attempts occur only when a client requests a sample. Healthy
+CPU readings cancel pending recovery and reset the budget. There is no new
+background timer or driver polling during healthy sampling, and the shared
+driver's configuration is unchanged.
+
+- The application suite passed **41** client/startup/integration assertions,
+  including **19 new startup/recovery checks**, plus **15** sensor-selection and
+  **40** widget checks. All builds completed without warnings or errors.
+- The new checks use the production startup/recovery helper with simulated
+  driver operations. They cover stopped, already-running, starting, stalled,
+  concurrent-start, missing and blocked drivers; cancellation; retry cooldowns,
+  exhaustion, partial readings and recovery. They do not mutate a real driver.
+- A separate native-adapter check exercised the production ServiceController
+  wrapper against this PC's already-running PawnIO driver and returned no warning.
+- The signed installer is **7,434,112 bytes**, SHA256
+  `cb53f34835036ee18623ea2ab408129dc8b9100bb454cbe4a7f27c85b960fe75`.
+  Build-time checks verified DLB publisher signatures and timestamps on setup,
+  its embedded uninstaller, and the four first-party binaries.
+- The office PC upgraded from v0.1.5 with exit code **0** and no restart. The
+  installed v0.1.6 service passed the **41** client/startup/integration assertions
+  and supplied all seven live readings with `Status=ok` and no warnings.
+- Independent installed checks verified all **19 runtime hashes**, the installed
+  manifest, **0.1.6.0** versions on the four DLB binaries, and valid publisher
+  signatures and timestamps on those binaries and the uninstaller. All **40**
+  installed-widget smoke checks passed. The fresh before/after settings hash and
+  Windows startup entry matched exactly; PawnIO's running state, demand-start
+  configuration and DriverStore path were preserved.
+- A **60.19-second** healthy-reading measurement (58 samples after 5 seconds of
+  warmup) measured the installed widget and service together: **0.0333% average
+  CPU** across 32 logical processors, **0.1416% peak sampled CPU**, **44.09 MiB
+  average private resident RAM**, **112.38 MiB summed working set**, and
+  **78.46 MiB private committed memory**. Working-set sums can double-count shared
+  pages. These process counters exclude separate System/driver activity and do
+  not measure gaming FPS or the temporary cost of repeated failed initialization.
+  [Measurement](validation/performance-v0.1.6.json).
+
+The affected PC's post-update reboot remains to be verified by its owner. The
+automated scenarios do not reproduce a real stopped kernel driver, and no
+shared driver was stopped or Windows rebooted during local development checks.
+
 ## September 13 v0.1.5 brighter labels
 
 All seven metric captions and the small DLB Precision footer now use neutral
