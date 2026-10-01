@@ -8,9 +8,9 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.7/DLB-Precision-Monitor-0.1.7-Setup.exe)**
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.8/DLB-Precision-Monitor-0.1.8-Setup.exe)**
 
-**v0.1.7 stops the box that flashed around the widget after clicking another window, makes the 1-second refresh update every second, and lets the widget size go from 50% to 150%.** It keeps the CPU sensor startup fix and bundled driver setup from previous releases. Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.7) is an optional checksum, not another installer.
+**v0.1.8 adds Check for updates: later versions install from inside the monitor, after it verifies they are signed by DLB Precision, LLC.** It keeps the v0.1.7 fixes (no flashing box, true 1-second refresh, 50–150% size) and the bundled driver setup from previous releases. Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.8) is an optional checksum, not another installer.
 
 1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
@@ -85,7 +85,7 @@ dotnet build DlbPrecision.sln -c Release
 .\scripts\Test.ps1
 .\scripts\Test.ps1 -Integration # Requires installed sensor service
 .\scripts\Test-Installer.ps1 # Compiled prerequisite scenarios; no driver changes
-.\scripts\Build-Installer.ps1 -Version 0.1.7 -OutputDirectory .\artifacts\unsigned-0.1.7-attempt-1
+.\scripts\Build-Installer.ps1 -Version 0.1.8 -OutputDirectory .\artifacts\unsigned-0.1.8-attempt-1
 ```
 
 The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. The command above makes an **unsigned local build**; release signing is opt-in and requires DLB's approved signing profile. See [installer build instructions](installer/README.md) and [code-signing instructions](docs/CODE-SIGNING.md). Use a new output directory for each attempt; existing installer files and checksums are never overwritten.
