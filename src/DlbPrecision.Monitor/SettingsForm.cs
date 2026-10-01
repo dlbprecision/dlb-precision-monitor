@@ -42,6 +42,7 @@ namespace DlbPrecision.Monitor
         private bool sizeDirty;
         private int appliedSizePercent;
         public Func<MonitorSettings, bool, int?, SettingsApplyResult>? ApplySettings { get; set; }
+        public Action? CheckForUpdates { get; set; }
 
         public SettingsForm(MonitorSettings current, SensorSnapshot? snapshot, string diagnostics, float widgetDpiScale = 1f)
         {
@@ -54,12 +55,12 @@ namespace DlbPrecision.Monitor
             MaximizeBox = false;
             MinimizeBox = false;
             ShowInTaskbar = true;
-            ClientSize = new Size(490, 735);
+            ClientSize = new Size(490, 777);
             BackColor = Color.FromArgb(23, 23, 30);
             ForeColor = Color.FromArgb(232, 229, 240);
-            content.SetBounds(0, 0, 490, 619);
+            content.SetBounds(0, 0, 490, 661);
             content.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            content.AutoScrollMinSize = new Size(0, 619);
+            content.AutoScrollMinSize = new Size(0, 661);
             Controls.Add(content);
 
             var title = new Label { Text = "Make it yours.", Font = titleFont, AutoSize = true, Location = new Point(24, 20) };
@@ -122,29 +123,35 @@ namespace DlbPrecision.Monitor
             content.Controls.Add(shortcut);
             content.Controls.Add(new Label { Text = "Click the shortcut field and press Ctrl or Alt plus a key.", ForeColor = Color.FromArgb(163, 158, 178), Location = new Point(26, 526), Size = new Size(437, 22) });
 
+            content.Controls.Add(new Label { Name = "VersionText", Text = "Version " + AppVersion.Display, Location = new Point(26, 562), Size = new Size(139, 23) });
+            var checkForUpdates = new Button { Name = "CheckForUpdates", Text = "Check for updates…", FlatStyle = FlatStyle.Flat };
+            checkForUpdates.SetBounds(171, 555, 180, 32);
+            checkForUpdates.Click += (sender, args) => CheckForUpdates?.Invoke();
+            content.Controls.Add(checkForUpdates);
+
             var diagnosticsLabel = new Label
             {
                 Name = "SensorDetails",
                 Text = diagnostics,
                 ForeColor = Color.FromArgb(163, 158, 178),
-                Location = new Point(26, 555),
+                Location = new Point(26, 597),
                 AutoSize = true,
                 MaximumSize = new Size(436, 0)
             };
             content.Controls.Add(diagnosticsLabel);
             diagnosticsTip.SetToolTip(diagnosticsLabel, diagnostics);
             validation.Name = "ValidationMessage";
-            validation.SetBounds(26, 623, 435, 44); validation.ForeColor = WarningColor;
+            validation.SetBounds(26, 665, 435, 44); validation.ForeColor = WarningColor;
             validation.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             Controls.Add(validation);
 
             var apply = new Button { Name = "ApplySettings", Text = "Apply", DialogResult = DialogResult.None, BackColor = WidgetRenderer.Blue, ForeColor = Color.FromArgb(10, 15, 22), FlatStyle = FlatStyle.Flat };
             apply.FlatAppearance.BorderSize = 0;
-            apply.SetBounds(247, 675, 104, 34);
+            apply.SetBounds(247, 717, 104, 34);
             apply.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             apply.Click += Apply;
             var close = new Button { Name = "CloseSettings", Text = "Close", DialogResult = DialogResult.Cancel, FlatStyle = FlatStyle.Flat };
-            close.SetBounds(361, 675, 102, 34);
+            close.SetBounds(361, 717, 102, 34);
             close.Anchor = AnchorStyles.Bottom | AnchorStyles.Right;
             // This form is modeless: DialogResult alone only closes ShowDialog windows.
             close.Click += (sender, args) => Close();

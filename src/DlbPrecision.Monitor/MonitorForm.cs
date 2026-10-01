@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -64,6 +65,7 @@ namespace DlbPrecision.Monitor
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(showItem);
             menu.Items.Add(new ToolStripMenuItem("Settings…", null, (sender, args) => OpenSettings()));
+            menu.Items.Add(new ToolStripMenuItem("Check for updates…", null, (sender, args) => CheckForUpdates()));
             menu.Items.Add(orientationItem);
             menu.Items.Add(lockItem);
             menu.Items.Add(new ToolStripMenuItem("Move to primary monitor", null, (sender, args) => RecoverPosition()));
@@ -241,12 +243,22 @@ namespace DlbPrecision.Monitor
             settingsForm.SyncWidgetState(settings.Vertical, settings.PositionLocked, WidgetSizing.GetPercent(settings.Vertical, Size, DpiScale));
         }
 
+        private void CheckForUpdates()
+        {
+            string? problem = UpdateLauncher.Start(Path.GetDirectoryName(Application.ExecutablePath), info => { using (Process.Start(info)) { } });
+            if (problem == null) return;
+            tray.BalloonTipTitle = "Check for updates";
+            tray.BalloonTipText = problem;
+            tray.ShowBalloonTip(7000);
+        }
+
         private void OpenSettings()
         {
             if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
             UpdateBoundsSettings();
             settingsForm = new SettingsForm(settings, snapshot, DiagnosticsText(), DpiScale) { Icon = Icon, TopMost = settings.AlwaysOnTop };
             settingsForm.ApplySettings = ApplySettings;
+            settingsForm.CheckForUpdates = CheckForUpdates;
             settingsForm.FormClosed += (sender, args) => settingsForm = null;
             settingsForm.Show();
         }
