@@ -19,6 +19,7 @@ namespace DlbPrecision.Monitor
         private static readonly Color Muted = Color.FromArgb(131, 125, 145);
         private static readonly Color Border = Color.FromArgb(53, 49, 63);
         private static readonly string[] Labels = { "CPU Temp", "CPU Load", "CPU Clock", "GPU Temp", "GPU Load", "GPU Clock", "RAM Load" };
+        private const float MinimumTextPixels = 8;
 
         internal readonly struct Reading
         {
@@ -62,19 +63,24 @@ namespace DlbPrecision.Monitor
         {
             graphics.Clear(Background);
             graphics.SmoothingMode = SmoothingMode.None;
-            float margin = 6 * dpiScale;
-            float gap = 6 * dpiScale;
+            // Margins, gaps and the footer follow the widget's size like the tiles do, so a small
+            // widget is a true scaled-down copy instead of fixed chrome squeezing the readings.
+            float unit = dpiScale * WidgetSizing.Zoom(settings.Vertical, bounds.Size, dpiScale);
+            float margin = 6 * unit;
+            float gap = 6 * unit;
             bool showFooter = settings.Branding || !string.IsNullOrEmpty(status) || sample;
-            float footer = showFooter ? 18 * dpiScale : 0;
+            float footerFontSize = Math.Max(MinimumTextPixels, 9.2f * unit);
+            float footer = showFooter ? Math.Max(18 * unit, footerFontSize + 2) : 0;
             float width = Math.Max(1, bounds.Width - margin * 2);
             float height = Math.Max(1, bounds.Height - margin * 2 - footer);
             float tileWidth = settings.Vertical ? width : (width - gap * 6) / 7;
             float tileHeight = settings.Vertical ? (height - gap * 6) / 7 : height;
             Reading[] readings = Readings(snapshot, settings);
+            float accentWidth = Math.Max(1, (float)Math.Round(2 * unit));
             using (var surfaceBrush = new SolidBrush(Surface))
             using (var borderPen = new Pen(Border))
-            using (var bluePen = new Pen(Blue, Math.Max(1, 2 * dpiScale)))
-            using (var purplePen = new Pen(Purple, Math.Max(1, 2 * dpiScale)))
+            using (var bluePen = new Pen(Blue, accentWidth))
+            using (var purplePen = new Pen(Purple, accentWidth))
             {
                 for (int index = 0; index < 7; index++)
                 {
@@ -84,14 +90,14 @@ namespace DlbPrecision.Monitor
                     graphics.FillRectangle(surfaceBrush, tile);
                     graphics.DrawRectangle(borderPen, tile.X + .5f, tile.Y + .5f, tile.Width - 1, tile.Height - 1);
                     graphics.DrawLine(index >= 3 && index <= 5 ? purplePen : bluePen, x + 1, y + 1, x + tileWidth - 1, y + 1);
-                    DrawReading(graphics, tile, readings[index], Labels[index], dpiScale);
+                    DrawReading(graphics, tile, readings[index], Labels[index], dpiScale, chrome: unit);
                 }
             }
             if (showFooter)
             {
                 string footerText = sample ? "SAMPLE DATA" : !string.IsNullOrEmpty(status) ? status : "DLB PRECISION";
-                var textBounds = new Rectangle((int)margin, bounds.Bottom - (int)(footer + margin) + (int)(3 * dpiScale), (int)width, (int)footer);
-                using (var actualFont = new Font("Segoe UI", 9.2f * dpiScale, FontStyle.Regular, GraphicsUnit.Pixel))
+                var textBounds = new Rectangle((int)margin, bounds.Bottom - (int)(footer + margin) + (int)(3 * unit), (int)width, (int)footer);
+                using (var actualFont = new Font("Segoe UI", footerFontSize, FontStyle.Regular, GraphicsUnit.Pixel))
                 {
                     // Pixel fonts keep this quiet footer consistent with the custom DPI-scaled tile layout.
                     TextRenderer.DrawText(graphics, footerText, actualFont, textBounds, sample || !string.IsNullOrEmpty(status) ? Muted : Label, TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
@@ -99,20 +105,20 @@ namespace DlbPrecision.Monitor
             }
             if (!settings.PositionLocked)
             {
-                using (var gripPen = new Pen(Border, Math.Max(1, dpiScale)))
+                using (var gripPen = new Pen(Border, Math.Max(1, unit)))
                     for (int index = 1; index <= 3; index++)
                     {
-                        float inset = 3 * index * dpiScale;
-                        graphics.DrawLine(gripPen, bounds.Right - 2 * dpiScale - inset, bounds.Bottom - 2 * dpiScale,
-                            bounds.Right - 2 * dpiScale, bounds.Bottom - 2 * dpiScale - inset);
+                        float inset = 3 * index * unit;
+                        graphics.DrawLine(gripPen, bounds.Right - 2 * unit - inset, bounds.Bottom - 2 * unit,
+                            bounds.Right - 2 * unit, bounds.Bottom - 2 * unit - inset);
                     }
             }
         }
 
-        private static void DrawReading(Graphics graphics, RectangleF tile, Reading value, string label, float dpiScale)
+        private static void DrawReading(Graphics graphics, RectangleF tile, Reading value, string label, float dpiScale, float chrome)
         {
             float scale = Math.Min(tile.Width / 113f, tile.Height / 98f);
-            scale = Math.Max(.55f * dpiScale, Math.Min(2.5f * dpiScale, scale));
+            scale = Math.Max(.45f * dpiScale, Math.Min(2.5f * dpiScale, scale));
             float numberSize = 28f * scale;
             float unitSize = 14f * scale;
             float labelSize = 12f * scale;
@@ -121,13 +127,13 @@ namespace DlbPrecision.Monitor
             using (var probeUnit = new Font("Segoe UI", unitSize, FontStyle.Regular, GraphicsUnit.Pixel))
             {
                 float total = TextRenderer.MeasureText(graphics, value.Number, probeNumber, Size.Empty, measureFlags).Width + TextRenderer.MeasureText(graphics, value.Unit, probeUnit, Size.Empty, measureFlags).Width + 2 * scale;
-                float fit = Math.Min(1, (tile.Width - 10 * dpiScale) / Math.Max(total, 1));
+                float fit = Math.Min(1, (tile.Width - 10 * chrome) / Math.Max(total, 1));
                 numberSize *= fit;
                 unitSize *= fit;
             }
             using (var numberFont = new Font("Segoe UI Semibold", Math.Max(8, numberSize), FontStyle.Regular, GraphicsUnit.Pixel))
             using (var unitFont = new Font("Segoe UI", Math.Max(7, unitSize), FontStyle.Regular, GraphicsUnit.Pixel))
-            using (var labelFont = new Font("Segoe UI", Math.Max(8, labelSize), FontStyle.Regular, GraphicsUnit.Pixel))
+            using (var labelFont = new Font("Segoe UI", Math.Max(MinimumTextPixels, labelSize), FontStyle.Regular, GraphicsUnit.Pixel))
             {
                 Size number = TextRenderer.MeasureText(graphics, value.Number, numberFont, Size.Empty, measureFlags);
                 Size unit = TextRenderer.MeasureText(graphics, value.Unit, unitFont, Size.Empty, measureFlags);

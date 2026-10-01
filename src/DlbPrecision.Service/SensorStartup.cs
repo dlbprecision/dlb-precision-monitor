@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Security;
 using System.ServiceProcess;
@@ -58,8 +59,9 @@ namespace DlbPrecision.Service
 
     internal sealed class SensorRecovery
     {
-        // ponytail: cap rediscovery at three retries; unsupported CPUs stay partial until readings recover or the service restarts.
+        // Cap rediscovery at three retries; unsupported hardware stays partial until readings recover or the service restarts.
         private static readonly long[] Delays = { 10000, 30000, 60000 };
+        private readonly HashSet<string> reportingGpus = new HashSet<string>(StringComparer.Ordinal);
         private int retries;
         private long retryAt = -1;
 
@@ -73,12 +75,32 @@ namespace DlbPrecision.Service
             return true;
         }
 
+        internal static bool CpuReady(SensorSnapshot snapshot) => snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
+
+        // A GPU is watched only after it has reported, so hardware that never exposes GPU sensors
+        // does not trigger rediscovery, while one that goes blank later (for example after a
+        // graphics-driver update) does. Reopening sensors re-initializes the vendor libraries.
         internal bool Observe(SensorSnapshot snapshot, long milliseconds)
         {
-            bool cpuReady = snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
-            if (cpuReady) { retries = 0; retryAt = -1; }
+            bool gpusReady = true;
+            foreach (string id in reportingGpus)
+                if (!IsReporting(snapshot, id)) gpusReady = false;
+            foreach (GpuSnapshot gpu in snapshot.Gpus)
+                if (HasReading(gpu)) reportingGpus.Add(gpu.Id);
+
+            bool ready = CpuReady(snapshot) && gpusReady;
+            if (ready) { retries = 0; retryAt = -1; }
             else if (!Pending && retries < Delays.Length) retryAt = milliseconds + Delays[retries];
-            return cpuReady;
+            return ready;
         }
+
+        private static bool IsReporting(SensorSnapshot snapshot, string id)
+        {
+            foreach (GpuSnapshot gpu in snapshot.Gpus)
+                if (gpu.Id == id && HasReading(gpu)) return true;
+            return false;
+        }
+
+        private static bool HasReading(GpuSnapshot gpu) => gpu.TemperatureC.HasValue || gpu.LoadPercent.HasValue || gpu.ClockMhz.HasValue;
     }
 }

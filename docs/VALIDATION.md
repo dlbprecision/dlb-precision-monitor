@@ -5,6 +5,45 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## September 30 review fixes (unreleased)
+
+Code-review fixes on branch `fix/widget-review-fixes`. No installer was built or
+installed; the office PC kept running the installed v0.1.6 widget and service.
+
+- **Refresh timing.** A fresh sensor sample took about **51 ms** and the widget's
+  1-second WinForms timer fired every **992–1005 ms**. The service started its
+  1-second reuse window after sampling finished, so every other 1-second poll
+  received the previous sample: "Every second" refreshed every 2 seconds. The
+  window now starts with each sample and lasts 750 ms. Measured v0.1.6 baseline
+  (effectively 2-second sampling): widget about **0.5%** of one logical
+  processor and **36 MB** private memory; service about **0.6%** and **51 MB**.
+  True 1-second sampling is expected to roughly double the service's sampling
+  cost; this has not yet been measured on an installed build.
+- **Border flash after clicking elsewhere.** An on-screen test window with the
+  widget's borderless, resizable style showed **5,544** off-color edge pixels
+  after losing focus. With `WM_NCACTIVATE` passed to Windows with `lParam = -1`
+  it showed **0**.
+- **Window behavior.** The widget shows without taking focus (shortcut, sign-in,
+  reopening), reopening the app no longer moves it to the main display, and it
+  is created at its saved position with that display's DPI.
+- **Settings.** A shortcut owned by another app no longer blocks other
+  preferences from saving; the open Settings window follows layout and lock
+  changes made from the right-click menu; settings missing from an older file
+  load their defaults.
+- **Size slider.** The range is now **50–150%** (was 75–200%), and borders, gaps
+  and the footer scale with the widget. Renders were checked at 150, 100, 75, 65,
+  60, 55, 50 and 45% horizontal and 100, 75, 60 and 50% vertical; 50% is the
+  smallest size with clean readings.
+- **Recovery and diagnostics.** GPU readings that disappear after being
+  available now use the existing bounded sensor recovery. Unexpected widget
+  errors are written to `error.log` instead of showing the .NET error dialog.
+- Checks: **47** client/startup assertions (10 new), **15** sensor-selection and
+  **47** widget checks (7 new). All builds completed without warnings or errors.
+
+Not yet verified: mixed-DPI startup (the office PC's displays are all at 100%),
+GPU recovery after a real graphics-driver update, in-game shortcut behavior,
+and refresh/CPU measurements with an installed build of these changes.
+
 ## September 22 v0.1.6 CPU sensor startup recovery
 
 A user with a Ryzen 7 9850X3D reported CPU temperature and clock remaining

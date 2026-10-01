@@ -36,7 +36,7 @@ Windows 11 already contains the .NET Framework runtime this app uses. Local buil
 
 ## Use
 
-- Right-click the widget, open **Settings**, move the **Widget size** slider from **75% to 200%**, then click **Apply**. Sizing works in horizontal and vertical layouts, and the resulting dimensions are saved.
+- Right-click the widget, open **Settings**, move the **Widget size** slider from **50% to 150%**, then click **Apply**. The whole widget scales evenly, including its borders and footer, in horizontal and vertical layouts, and the resulting dimensions are saved.
 - For a custom shape, unlock position/size and drag any edge or corner. Applying unrelated settings preserves those custom dimensions unless you request a size or layout change.
 - Drag the unlocked widget to the desired monitor. Position/size locking prevents dragging and edge/corner resizing.
 - Right-click for settings, horizontal/vertical layout, position/size locking, recovery to the primary screen, or Exit.
@@ -45,7 +45,9 @@ Windows 11 already contains the .NET Framework runtime this app uses. Local buil
 - RAM shows physical memory used, with one decimal place and no total.
 - Settings offers 1-second and 2-second refresh, 30–100% opacity, graphics-card selection, launch at sign-in, and small optional branding.
 - Hiding the widget stops its sensor polling. Exit ends the widget; the sensor service remains idle until a widget requests readings.
-- The tray icon recovers a hidden/locked widget. Reopening the app also restores the existing instance.
+- The tray icon recovers a hidden/locked widget. Reopening the app shows the existing widget where you left it; use **Move to primary monitor** to bring it to the main display.
+- Showing the widget with the shortcut, at sign-in, or by reopening the app never takes keyboard focus from a game.
+- If something unexpected fails, the widget keeps running and records the details in `%LOCALAPPDATA%\DLBPrecision\Monitor\error.log`.
 
 The monitor saves position, dimensions, layout, units, branding, opacity, GPU selection, and shortcut in `%LOCALAPPDATA%\DLBPrecision\Monitor\settings.json`. A disconnected display is handled by moving the widget into an available working area. Startup is a per-user Windows Run entry.
 
@@ -61,7 +63,7 @@ Different tools may use different sensor definitions or sampling intervals. Miss
 - `DlbPrecision.Monitor`: per-user widget; never needs elevation for normal operation.
 - `DlbPrecision.Service`: `DlbPrecisionSensors` Windows service, running as LocalSystem for sensor access.
 - `DlbPrecision.Sensors`: embedded LibreHardwareMonitorLib 0.9.6 with only CPU/GPU monitoring enabled, plus native Windows CPU/RAM metrics. Library sensor history is disabled.
-- `DlbPrecision.Shared`: small local output-only named-pipe protocol. The widget authenticates the server PID against SCM. No network connection, file path, or command is accepted from the widget. Several clients share at most one sample per second.
+- `DlbPrecision.Shared`: small local output-only named-pipe protocol. The widget authenticates the server PID against SCM. No network connection, file path, or command is accepted from the widget. Widgets that ask at nearly the same moment share one sample, and every 1-second refresh receives new readings.
 
 ## Build and check
 

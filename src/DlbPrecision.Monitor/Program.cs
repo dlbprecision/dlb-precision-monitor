@@ -1,10 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Security.Principal;
+using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using DlbPrecision.Shared;
@@ -16,7 +19,6 @@ namespace DlbPrecision.Monitor
         [STAThread]
         private static int Main(string[] args)
         {
-            NativeMethods.SetProcessDpiAwarenessContext(new IntPtr(-4));
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             try
@@ -39,10 +41,15 @@ namespace DlbPrecision.Monitor
                 {
                     if (!created)
                     {
-                        IntPtr existing = NativeMethods.FindWindow(null, "DLB Precision Monitor");
-                        if (existing != IntPtr.Zero) NativeMethods.PostMessage(existing, 0x8000 + 72, IntPtr.Zero, IntPtr.Zero);
+                        IntPtr existing = FindRunningWidget();
+                        if (existing != IntPtr.Zero) NativeMethods.PostMessage(existing, MonitorForm.ActivateMessage, IntPtr.Zero, IntPtr.Zero);
                         return 0;
                     }
+                    // An unexpected error in a timer or paint is logged and the widget keeps running,
+                    // instead of showing the .NET "Unhandled exception" dialog.
+                    Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                    Application.ThreadException += (sender, error) => ErrorLog.Write(error.Exception);
+                    AppDomain.CurrentDomain.UnhandledException += (sender, error) => ErrorLog.Write(error.ExceptionObject as Exception);
                     var monitor = new MonitorForm(args.Contains("--reset-position"));
                     // Diagnostic launch exposes the tool window to accessibility test tools.
                     // Regular widget launches remain absent from the taskbar.
@@ -57,6 +64,41 @@ namespace DlbPrecision.Monitor
                 if (args.Length == 0 || args[0] == "--reset-position") MessageBox.Show("DLB Precision Monitor could not start.\n\n" + ex.Message, "DLB Precision Monitor", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 else if (args.Length >= 2 && args[0] == "--smoke-test") File.WriteAllText(args[1], "FAILED\n" + ex);
                 return 1;
+            }
+        }
+
+        // The title alone also matches a File Explorer window open on the install folder,
+        // so only a window owned by this same executable counts as the running widget.
+        private static IntPtr FindRunningWidget()
+        {
+            const string title = "DLB Precision Monitor";
+            string self = Application.ExecutablePath;
+            int selfId = Process.GetCurrentProcess().Id;
+            IntPtr found = IntPtr.Zero;
+            NativeMethods.EnumWindows((window, parameter) =>
+            {
+                if (NativeMethods.GetWindowTextLength(window) != title.Length) return true;
+                var text = new StringBuilder(title.Length + 1);
+                NativeMethods.GetWindowText(window, text, text.Capacity);
+                if (text.ToString() != title) return true;
+                NativeMethods.GetWindowThreadProcessId(window, out uint processId);
+                if (processId == selfId || !string.Equals(ExecutablePath(processId), self, StringComparison.OrdinalIgnoreCase)) return true;
+                found = window;
+                return false;
+            }, IntPtr.Zero);
+            return found;
+        }
+
+        private static string? ExecutablePath(uint processId)
+        {
+            try
+            {
+                using (var process = Process.GetProcessById((int)processId))
+                    return process.MainModule?.FileName;
+            }
+            catch (Exception error) when (error is ArgumentException || error is InvalidOperationException || error is Win32Exception)
+            {
+                return null;
             }
         }
 
@@ -79,7 +121,7 @@ namespace DlbPrecision.Monitor
             SensorSnapshot sample = SampleSnapshot();
             Render(Path.Combine(directory, "widget-horizontal-sample.png"), new Size(861, 128), settings, sample, "", 1, true);
             Render(Path.Combine(directory, "widget-horizontal-150dpi-sample.png"), new Size(1292, 192), settings, sample, "", 1.5f, true);
-            Render(Path.Combine(directory, "widget-minimum-sample.png"), new Size(590, 96), settings, sample, "", 1, true);
+            Render(Path.Combine(directory, "widget-minimum-sample.png"), WidgetSizing.MinimumSize(false, 1), settings, sample, "", 1, true);
             Render(Path.Combine(directory, "widget-unavailable.png"), new Size(861, 128), settings, null, "Sensors unavailable · right-click for settings", 1, false);
             settings.Fahrenheit = true;
             Render(Path.Combine(directory, "widget-fahrenheit-sample.png"), new Size(861, 128), settings, sample, "", 1, true);
@@ -134,8 +176,9 @@ namespace DlbPrecision.Monitor
             var oldHotkeySettings = new MonitorSettings { HotkeyKey = (int)Keys.F12, Fahrenheit = true, OpacityPercent = 73 };
             oldHotkeySettings.Normalize();
             verify(oldHotkeySettings.HotkeyKey == (int)Keys.F10 && oldHotkeySettings.Fahrenheit && oldHotkeySettings.OpacityPercent == 73, "Previously saved F12 setting recovers to F10 without losing display preferences");
-            using (var icon = BrandIcon.Load(16))
-                verify(icon.Width == 16 && icon.Height == 16, "Embedded DLB tray icon resolves at native tray size");
+            int trayIconSize = SystemInformation.SmallIconSize.Width;
+            using (var icon = BrandIcon.Load(trayIconSize))
+                verify(icon.Width == trayIconSize && icon.Height == trayIconSize, "Embedded DLB tray icon resolves at the system small-icon size the tray uses");
             using (var modelessSettings = new SettingsForm(new MonitorSettings(), null, "Modeless close regression; no settings are applied."))
             {
                 modelessSettings.ShowInTaskbar = false;
@@ -157,7 +200,15 @@ namespace DlbPrecision.Monitor
             verify(WindowPlacement.Fit(leftWidget, new[] { area, leftDisplay }, new Size(590, 96)) == leftWidget, "Valid negative monitor coordinates are preserved");
             verify(WidgetSizing.GetSize(false, 75, 1) == new Size(646, 96), "Compact slider setting scales all horizontal tiles");
             verify(WidgetSizing.GetSize(true, 75, 1) == new Size(108, 537), "Compact slider setting supports vertical layout");
-            verify(WidgetSizing.GetSize(false, 200, 1) == new Size(1722, 256), "Large slider setting doubles widget dimensions");
+            verify(WidgetSizing.GetSize(false, 150, 1) == new Size(1292, 192) && WidgetSizing.GetSize(false, 200, 1) == new Size(1292, 192),
+                "Largest slider setting is 150% and larger requests are capped");
+            verify(WidgetSizing.GetSize(false, 50, 1) == new Size(430, 64) && WidgetSizing.GetSize(true, 50, 1) == new Size(72, 358),
+                "Smallest slider setting is half size in both layouts");
+            verify(WidgetSizing.MinimumSize(false, 1) == WidgetSizing.GetSize(false, WidgetSizing.MinPercent, 1)
+                && WidgetSizing.MinimumSize(true, 1.5f) == WidgetSizing.GetSize(true, WidgetSizing.MinPercent, 1.5f),
+                "Edge-drag minimum matches the smallest slider setting");
+            verify(WidgetSizing.Zoom(false, new Size(430, 64), 1) == .5f && WidgetSizing.Zoom(false, new Size(861, 128), 1) == 1f,
+                "Widget borders, gaps and footer scale with the widget size");
             verify(WidgetSizing.GetSize(false, 100, 1.5f) == new Size(1292, 192), "Widget size follows its own display DPI");
             Rectangle custom = new Rectangle(-1500, 250, 900, 150);
             verify(WidgetSizing.Apply(custom, false, false, null, 1, new[] { area, leftDisplay }) == custom,
@@ -185,7 +236,12 @@ namespace DlbPrecision.Monitor
                 var slider = (TrackBar)sizingForm.Controls.Find("WidgetSize", true).Single();
                 var requests = new List<int?>();
                 bool reject = false;
-                sizingForm.ApplySettings = (next, startup, requested) => { requests.Add(requested); return reject ? "Test save failure" : ""; };
+                string applyWarning = "";
+                sizingForm.ApplySettings = (next, startup, requested) =>
+                {
+                    requests.Add(requested);
+                    return reject ? new SettingsApplyResult(false, "Test save failure") : new SettingsApplyResult(true, applyWarning);
+                };
                 ((Button)sizingForm.AcceptButton).PerformClick();
                 verify(requests.Count == 1 && !requests.Last().HasValue, "Opening Settings and applying does not reset custom size");
                 slider.Value = 75;
@@ -198,8 +254,31 @@ namespace DlbPrecision.Monitor
                 reject = false;
                 ((Button)sizingForm.AcceptButton).PerformClick();
                 verify(requests.Last() == 150, "A failed Apply retains the requested size for retry");
+                applyWarning = "Saved, but that shortcut is in use by another app.";
+                slider.Value = 125;
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                ((Button)sizingForm.AcceptButton).PerformClick();
+                applyWarning = "";
+                verify(requests[requests.Count - 2] == 125 && !requests.Last().HasValue && sizingForm.Controls["ValidationMessage"].Text.Contains("shortcut"),
+                    "A shortcut conflict still saves other settings, including size, and explains the shortcut");
                 ((Button)sizingForm.Controls["CloseSettings"]).PerformClick();
                 verify(sizingForm.IsDisposed, "Close still works with scrollable size settings");
+            }
+            using (var syncForm = new SettingsForm(new MonitorSettings(), null, "Menu sync regression; no preferences are written."))
+            {
+                syncForm.ShowInTaskbar = false;
+                syncForm.StartPosition = FormStartPosition.Manual;
+                syncForm.Location = new Point(-32000, -32000);
+                syncForm.Opacity = 0;
+                syncForm.Show();
+                MonitorSettings? applied = null;
+                int? syncRequest = 0;
+                syncForm.ApplySettings = (next, startup, requested) => { applied = next; syncRequest = requested; return new SettingsApplyResult(true, ""); };
+                syncForm.SyncWidgetState(true, true, 150);
+                ((Button)syncForm.AcceptButton).PerformClick();
+                verify(applied != null && applied.PositionLocked && applied.Vertical && !syncRequest.HasValue,
+                    "Locking or changing layout from the widget menu while Settings is open is not undone by Apply");
+                ((Button)syncForm.Controls["CloseSettings"]).PerformClick();
             }
             SensorSnapshot sample = SampleSnapshot();
             sample.Gpus.Add(new GpuSnapshot { Id = "second", Name = "Second GPU", LoadPercent = 73 });
@@ -218,9 +297,17 @@ namespace DlbPrecision.Monitor
                 settings.OpacityPercent = 80;
                 SettingsStore.Save(settings, path);
                 verify(SettingsStore.Load(path, out warning).OpacityPercent == 80, "Existing preferences are atomically replaced");
+                SettingsStore.Save(new MonitorSettings { Width = 430, Height = 64 }, path);
+                MonitorSettings smallest = SettingsStore.Load(path, out warning);
+                verify(smallest.Width == 430 && smallest.Height == 64, "Smallest slider size persists across restart");
+                File.WriteAllText(path, "{\"Version\":1,\"Fahrenheit\":true}");
+                MonitorSettings olderFile = SettingsStore.Load(path, out warning);
+                verify(warning == "" && olderFile.Fahrenheit && olderFile.AlwaysOnTop && olderFile.Branding && olderFile.OpacityPercent == 100
+                    && olderFile.RefreshMilliseconds == 1000 && olderFile.Width == 861 && olderFile.Height == 128 && olderFile.Left == int.MinValue,
+                    "Settings missing from an older file load their defaults instead of false or zero");
                 File.WriteAllText(path, "malformed settings");
                 verify(SettingsStore.Load(path, out warning).RefreshMilliseconds == 1000 && warning.Length > 0, "Corrupted preferences recover with a visible warning");
-                Render(Path.Combine(tempDirectory, "missing.png"), new Size(590, 96), new MonitorSettings(), null, "Sensors unavailable", 1, false);
+                Render(Path.Combine(tempDirectory, "missing.png"), WidgetSizing.MinimumSize(false, 1), new MonitorSettings(), null, "Sensors unavailable", 1, false);
                 verify(new FileInfo(Path.Combine(tempDirectory, "missing.png")).Length > 1000, "Unavailable readings render at minimum widget size");
             }
             finally

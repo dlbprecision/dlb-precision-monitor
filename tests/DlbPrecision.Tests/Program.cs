@@ -21,10 +21,12 @@ internal static class Program
         {
             CodecTests();
             SensorStartupTests();
+            GpuRecoveryTests();
+            SamplePolicyTests();
             await ClientTests();
             if (Array.IndexOf(args, "--integration") >= 0)
                 await IntegrationTests(Array.IndexOf(args, "--allow-console-host") >= 0);
-            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, driver startup/recovery, protocol, IPC timeouts/cancellation" +
+            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, driver startup/recovery, GPU recovery, sample sharing, protocol, IPC timeouts/cancellation" +
                 (Array.IndexOf(args, "--integration") >= 0 ? ", live service" : "") + ").");
             return 0;
         }
@@ -149,7 +151,7 @@ internal static class Program
         Check(partial.CpuLoadPercent == 20 && partial.RamUsedGb == 12 && partial.Gpus[0].ClockMhz == 510,
             "Recovery scheduling must preserve available Windows and GPU measurements.");
 
-        var healthy = new SensorSnapshot { CpuTemperatureC = 55, CpuClockMhz = 4800 };
+        var healthy = new SensorSnapshot { CpuTemperatureC = 55, CpuClockMhz = 4800, Gpus = ReportingGpu() };
         Check(recovery.Observe(healthy, 86401000) && !recovery.Exhausted && !recovery.Pending,
             "Successful CPU measurements must clear failed-startup state, regardless of unavailable GPU metrics.");
         Check(!recovery.TryBeginRetry(long.MaxValue), "A healthy reader must not trigger periodic driver checks or reopen attempts.");
@@ -157,8 +159,51 @@ internal static class Program
         recovery.Observe(healthy, 86402000);
         Check(recovery.Pending && !recovery.TryBeginRetry(86411999) && recovery.TryBeginRetry(86412000),
             "Losing one CPU measurement after recovery must start a fresh bounded retry budget.");
-        recovery.Observe(new SensorSnapshot { CpuTemperatureC = 56, CpuClockMhz = 4700 }, 86412001);
+        recovery.Observe(new SensorSnapshot { CpuTemperatureC = 56, CpuClockMhz = 4700, Gpus = ReportingGpu() }, 86412001);
         Check(!recovery.Pending && !recovery.TryBeginRetry(long.MaxValue), "Readings that recover naturally must cancel pending recovery.");
+    }
+
+    private static List<GpuSnapshot> ReportingGpu() => new List<GpuSnapshot> { new GpuSnapshot { ClockMhz = 510 } };
+
+    private static void GpuRecoveryTests()
+    {
+        var recovery = new SensorRecovery();
+        SensorSnapshot Sample(params GpuSnapshot[] gpus) =>
+            new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = 4000, Gpus = new List<GpuSnapshot>(gpus) };
+        var blank = new GpuSnapshot { Id = "gpu-0", Name = "GPU" };
+        var live = new GpuSnapshot { Id = "gpu-0", Name = "GPU", TemperatureC = 40, LoadPercent = 3, ClockMhz = 300 };
+
+        Check(recovery.Observe(Sample(blank), 0) && !recovery.Pending,
+            "A GPU that has never exposed sensors must not trigger expensive rediscovery.");
+        Check(recovery.Observe(Sample(live), 1000) && !recovery.Pending, "Healthy CPU and GPU readings need no recovery.");
+        Check(!recovery.Observe(Sample(blank), 2000) && recovery.Pending
+            && !recovery.TryBeginRetry(11999) && recovery.TryBeginRetry(12000),
+            "A GPU that stops reporting, as after a graphics-driver update, must schedule bounded recovery.");
+        Check(!recovery.Observe(Sample(), 12000) && recovery.Pending && !recovery.TryBeginRetry(41999),
+            "A GPU still missing after reopening sensors must use the next, longer retry delay.");
+        Check(recovery.Observe(Sample(live), 13000) && !recovery.Pending && !recovery.Exhausted,
+            "GPU readings that return must clear recovery state.");
+        Check(SensorRecovery.CpuReady(Sample()) && !SensorRecovery.CpuReady(new SensorSnapshot { CpuTemperatureC = 50 }),
+            "CPU readiness still requires both temperature and clock for the driver warning.");
+    }
+
+    private static void SamplePolicyTests()
+    {
+        // Intervals measured from the widget's WinForms 1-second timer; a fresh sample took ~51 ms.
+        long[] intervals = { 995, 997, 1003, 992, 1003, 1005, 994 };
+        long now = 0, lastStarted = 0;
+        int fresh = 0;
+        foreach (long interval in intervals)
+        {
+            now += interval;
+            if (SamplePolicy.CanReuse(now, lastStarted)) continue;
+            fresh++;
+            lastStarted = now;
+        }
+        Check(fresh == intervals.Length, "Every 1-second widget poll must receive a new hardware sample.");
+        Check(SamplePolicy.CanReuse(10100, 10000), "Widgets polling moments apart must share one sample.");
+        Check(!SamplePolicy.CanReuse(10800, 10000), "An early timer tick after a late one must still get a new sample.");
+        Check(!SamplePolicy.CanReuse(12000, 10000), "Economy 2-second polling must always get a new sample.");
     }
 
     private static async Task<SensorSnapshot> ReadFixture(byte[] payload, int delay = 0, string? pipeName = null, bool allowUninstalledHost = false)
@@ -175,7 +220,7 @@ internal static class Program
                 catch (System.IO.IOException) { /* An unauthenticated server is disconnected before its payload is read. */ }
                 server.Dispose();
             });
-            var response = await client.ReadAsync(1000, CancellationToken.None);
+            var response = await client.ReadAsync(CancellationToken.None);
             await serverTask;
             return response;
         }
@@ -203,7 +248,7 @@ internal static class Program
         using (var client = new SensorClient("DLBPrecision.Missing." + Guid.NewGuid().ToString("N")))
         {
             var timer = Stopwatch.StartNew();
-            response = await client.ReadAsync(1000, CancellationToken.None);
+            response = await client.ReadAsync(CancellationToken.None);
             Check(response.CpuTemperatureC == null && response.Status.Contains("unavailable"), "Missing service must be explicit.");
             Check(timer.Elapsed < TimeSpan.FromSeconds(4), "Missing service should fail quickly.");
         }
@@ -211,7 +256,7 @@ internal static class Program
         using (var cancel = new CancellationTokenSource(50))
         {
             bool cancelled = false;
-            try { await client.ReadAsync(1000, cancel.Token); }
+            try { await client.ReadAsync(cancel.Token); }
             catch (OperationCanceledException) { cancelled = true; }
             Check(cancelled, "Widget shutdown must cancel outstanding IPC.");
         }
@@ -224,14 +269,14 @@ internal static class Program
             SensorSnapshot? current = null;
             for (int i = 0; i < 5; i++)
             {
-                current = await client.ReadAsync(1000, CancellationToken.None);
+                current = await client.ReadAsync(CancellationToken.None);
                 if (current.RamUsedGb.HasValue) break;
                 await Task.Delay(1000);
             }
             Check(current != null && current.RamUsedGb > 0, "Running service must provide physical memory.");
             Check(current!.CpuName.Length > 0, "Running service must identify CPU.");
             await Task.Delay(1100);
-            var next = await client.ReadAsync(1000, CancellationToken.None);
+            var next = await client.ReadAsync(CancellationToken.None);
             Check(next.TimestampUtc > current.TimestampUtc, "Requested service samples must advance.");
             Check(next.CpuLoadPercent >= 0 && next.CpuLoadPercent <= 100, "CPU usage must be valid after warm-up.");
             Console.WriteLine(SnapshotCodec.ToJson(next));

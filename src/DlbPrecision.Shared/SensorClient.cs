@@ -28,7 +28,7 @@ namespace DlbPrecision.Shared
             verifyServiceIdentity = !allowUninstalledHost && !isolatedFixture;
         }
 
-        public async Task<SensorSnapshot> ReadAsync(int refreshMilliseconds, CancellationToken cancellationToken)
+        public async Task<SensorSnapshot> ReadAsync(CancellationToken cancellationToken)
         {
             // Only data flows from the service. The client cannot send commands or file paths.
             // Polling frequency is owned by the widget; a 2s UI interval causes 2s sensor work.
