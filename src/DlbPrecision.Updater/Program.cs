@@ -32,6 +32,8 @@ namespace DlbPrecision.Updater
             {
                 if (args.Length >= 1 && args[0] == "--smoke-test") { RunSmokeTests(args.Length >= 2 ? args[1] : null); return 0; }
                 if (args.Length >= 2 && args[0] == "--render-preview") { RenderPreviews(args[1]); return 0; }
+                // Keep this exact form in every future version: after an update, the old temporary copy
+                // asks the newly installed updater to remove the copy's folder with these arguments.
                 if (args.Length >= 3 && args[0] == "--cleanup") { RemoveAfterExit(args[1], args[2]); return 0; }
 
                 string? feed = Value(args, "--feed");
@@ -72,6 +74,9 @@ namespace DlbPrecision.Updater
         // Setup replaces every file in the install folder, so the updater waits for it from a private copy.
         private static void Relocate(string installDirectory, string? feed)
         {
+            string ownFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+            if (Path.GetFileName(ownFolder.TrimEnd('\\')).StartsWith(FolderPrefix, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidOperationException("The updater's temporary copy is in an unexpected place, so it will not copy itself again.");
             RemoveStaleFolders();
             string folder = Path.Combine(Path.GetTempPath(), FolderPrefix + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(folder);
@@ -112,6 +117,7 @@ namespace DlbPrecision.Updater
         {
             string folder = Path.GetFullPath(folderArgument);
             if (!IsRelocatedFolder(folder) || !int.TryParse(processArgument, out int processId)) return;
+            if (Directory.Exists(folder) && (File.GetAttributes(folder) & FileAttributes.ReparsePoint) != 0) return; // never follow a link
             try
             {
                 using (Process process = Process.GetProcessById(processId)) process.WaitForExit(120000);

@@ -124,7 +124,8 @@ namespace DlbPrecision.Updater
             SetupOutcome outcome = Interpret(exitCode, versionChanged, widgetClosed);
             if (widgetsBefore.Length > 0 && host.RunningWidgets().Length == 0) host.Reopen(monitor);
             bool updated = outcome == SetupOutcome.Updated || outcome == SetupOutcome.UpdatedRestartNeeded || outcome == SetupOutcome.UpdatedReenableStartup;
-            return new SetupResult(outcome, exitCode, !updated && exitCode != 0 ? KeepLog(log, keptLogPath) : null);
+            bool keep = outcome == SetupOutcome.Failed || (!updated && exitCode != 0);
+            return new SetupResult(outcome, exitCode, keep ? KeepLog(log, keptLogPath) : null);
         }
 
         private static string? KeepLog(string log, string keptLogPath)

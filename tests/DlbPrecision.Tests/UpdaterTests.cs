@@ -80,6 +80,11 @@ internal static class UpdaterTests
         check(UpdateOffer.Decide(Release("v0.1.9"), installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.Available
             && UpdateOffer.Decide(elsewhere, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
             "The real feed only downloads from DLB's own GitHub release files.");
+        ReleaseInfo traversal = Release("v0.1.9");
+        foreach (ReleaseAsset asset in traversal.Assets)
+            asset.DownloadUrl = ReleaseFeed.DownloadPrefix + "../../../../attacker/repo/releases/download/v0.1.9/" + asset.Name;
+        check(UpdateOffer.Decide(traversal, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
+            "A download address that climbs out of DLB's releases with ../ is refused.");
         check(UpdateOffer.Decide(Release("v\u0660.\u0661.\u0669"), installed, false, false).Status == OfferStatus.NotAvailable,
             "Tags with non-ASCII digits are refused instead of crashing.");
         ReleaseInfo unc = Release("v0.1.9", scheme: "file");
@@ -300,7 +305,8 @@ internal static class UpdaterTests
             {
                 VerificationResult wrongPublisher = VerifyCopy(dotnet, FileVersionInfo.GetVersionInfo(dotnet).ProductVersion?.Trim() ?? "");
                 // Offline, Windows cannot finish the revocation check and refuses earlier; either way it is refused.
-                check(!wrongPublisher.Ok, "A validly signed program from another publisher is refused: " + wrongPublisher.Reason);
+                check(!wrongPublisher.Ok && (wrongPublisher.Retryable || wrongPublisher.Reason.IndexOf("publisher", StringComparison.OrdinalIgnoreCase) >= 0),
+                    "A validly signed program from another publisher is refused for that reason: " + wrongPublisher.Reason);
             }
 
             string installed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "DLB Precision Monitor", "DlbPrecision.Monitor.exe");
@@ -366,6 +372,9 @@ internal static class UpdaterTests
             SetupResult earlyFailure = Simulate(1, false, false, false, true, reopenedWidgets);
             check(earlyFailure.Outcome == SetupOutcome.Cancelled && earlyFailure.KeptLog == kept,
                 "An update that stops before changing anything still keeps setup's log when it wrote one.");
+            SetupResult silentFailure = Simulate(0, false, false, false, true, reopenedWidgets);
+            check(silentFailure.Outcome == SetupOutcome.Failed && silentFailure.KeptLog == kept,
+                "Setup reporting success without installing the new version is a failure with its log kept.");
             SetupResult refused = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(1223));
             check(refused.Outcome == SetupOutcome.Cancelled, "Declining a prompt shown by Windows before setup starts is reported as cancelled.");
             SetupResult notStarted = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(8));
