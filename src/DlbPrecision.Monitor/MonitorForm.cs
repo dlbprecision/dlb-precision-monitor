@@ -53,8 +53,7 @@ namespace DlbPrecision.Monitor
             BackColor = WidgetRenderer.Background;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             Icon = brandIcon;
-            // Window options set before the handle exists become creation styles, with no repositioning or flash.
-            TopMost = settings.AlwaysOnTop;
+            // Set before the handle exists so the window is created with it, with no repositioning or flash.
             Opacity = settings.OpacityPercent / 100.0;
             PlaceBeforeFirstShow();
 
@@ -121,6 +120,9 @@ namespace DlbPrecision.Monitor
                 CreateParams parameters = base.CreateParams;
                 // Windows needs the sizing style as well as edge hit tests to resize the widget.
                 parameters.Style |= NativeMethods.WsThickFrame;
+                // Stay-on-top is a creation style, never the TopMost property: WinForms applies that property
+                // with a SetWindowPos that activates the window, defeating ShowWithoutActivation on every show.
+                if (settings != null && settings.AlwaysOnTop) parameters.ExStyle |= NativeMethods.WsExTopmost;
                 return parameters;
             }
         }
@@ -155,8 +157,7 @@ namespace DlbPrecision.Monitor
 
         private void ApplyWindowOptions()
         {
-            // The TopMost setter repositions the window without SWP_NOACTIVATE, which can take focus.
-            if (TopMost != settings.AlwaysOnTop) TopMost = settings.AlwaysOnTop;
+            if (IsHandleCreated) NativeMethods.SetAlwaysOnTop(Handle, settings.AlwaysOnTop);
             Opacity = settings.OpacityPercent / 100.0;
             timer.Interval = settings.RefreshMilliseconds;
             Cursor = settings.PositionLocked ? Cursors.Default : Cursors.SizeAll;
@@ -244,7 +245,7 @@ namespace DlbPrecision.Monitor
         {
             if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
             UpdateBoundsSettings();
-            settingsForm = new SettingsForm(settings, snapshot, DiagnosticsText(), DpiScale) { Icon = Icon, TopMost = TopMost };
+            settingsForm = new SettingsForm(settings, snapshot, DiagnosticsText(), DpiScale) { Icon = Icon, TopMost = settings.AlwaysOnTop };
             settingsForm.ApplySettings = ApplySettings;
             settingsForm.FormClosed += (sender, args) => settingsForm = null;
             settingsForm.Show();
