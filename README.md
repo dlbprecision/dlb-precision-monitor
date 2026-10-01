@@ -16,11 +16,18 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
 3. Check that the Windows administrator prompt names **DLB Precision, LLC**, choose **Yes**, then follow setup. The single installer includes the widget, sensor service, application libraries, and signed PawnIO setup if needed; no separate hardware-monitoring program or driver download is required. A desktop shortcut is selected by default on fresh installations.
 
-**Updating an existing installation:** download the current setup EXE above,
-right-click the monitor and choose **Exit**, then run the new setup. There is no
-need to uninstall first. Setup upgrades the existing installation and keeps your
-saved settings. Open the monitor from its desktop shortcut afterward. Updates
-are installed manually; the app does not have an automatic updater.
+**Updating from the monitor (v0.1.8 and later):** right-click the monitor, or
+open **Settings**, and choose **Check for updates…**. If a newer version is
+available, its notes are shown; choose **Update now**. The monitor downloads the
+update, confirms it is genuinely signed by DLB Precision, LLC, and installs it.
+If Windows asks for permission, choose **Yes**. The monitor closes and reopens on
+the new version with your settings, size and position kept. It checks only when
+you ask, and only then contacts GitHub.
+
+**Updating from v0.1.7 or earlier, or by hand:** download the current setup EXE
+above, right-click the monitor and choose **Exit**, then run the new setup. There
+is no need to uninstall first. Setup upgrades the existing installation and keeps
+your saved settings. Open the monitor from its desktop shortcut afterward.
 
 If setup requests a Windows restart before it can finish the driver step, restart
 and run the same DLB installer again. Working shared PawnIO installations are
@@ -45,6 +52,7 @@ Windows 11 already contains the .NET Framework runtime this app uses. Local buil
 - RAM shows physical memory used, with one decimal place and no total.
 - Settings offers 1-second and 2-second refresh, 30–100% opacity, graphics-card selection, launch at sign-in, and small optional branding.
 - Hiding the widget stops its sensor polling. Exit ends the widget; the sensor service remains idle until a widget requests readings.
+- **Check for updates…** in the right-click menu or in Settings updates the monitor in place; see Updating above.
 - The tray icon recovers a hidden/locked widget. Reopening the app shows the existing widget where you left it; use **Move to primary monitor** to bring it to the main display.
 - Showing the widget with the shortcut, at sign-in, or by reopening the app never takes keyboard focus from a game.
 - If something unexpected fails, the widget keeps running and records the details in `%LOCALAPPDATA%\DLBPrecision\Monitor\error.log`.
@@ -63,6 +71,7 @@ Different tools may use different sensor definitions or sampling intervals. Miss
 - `DlbPrecision.Monitor`: per-user widget; never needs elevation for normal operation.
 - `DlbPrecision.Service`: `DlbPrecisionSensors` Windows service, running as LocalSystem for sensor access.
 - `DlbPrecision.Sensors`: embedded LibreHardwareMonitorLib 0.9.6 with only CPU/GPU monitoring enabled, plus native Windows CPU/RAM metrics. Library sensor history is disabled.
+- `DlbPrecision.Updater`: separate updater, started only by **Check for updates…**. It makes one HTTPS request for this repository's GitHub **Latest** release, downloads the setup and its checksum, and runs setup only after verifying the checksum and that Windows trusts a timestamped DLB Precision, LLC signature issued through Microsoft's identity-verified signing chain. It never offers drafts, pre-releases or older versions. The widget and sensor service contain no network code.
 - `DlbPrecision.Shared`: small local output-only named-pipe protocol. The widget authenticates the server PID against SCM. No network connection, file path, or command is accepted from the widget. Widgets that ask at nearly the same moment share one sample, and every 1-second refresh receives new readings.
 
 ## Build and check
@@ -88,6 +97,16 @@ Useful diagnostic commands:
 ```
 
 Preview images are labeled SAMPLE DATA; they are appearance references, not live readings. An unelevated standalone probe can lack CPU temperature/clock even when the installed service has access.
+
+**Releasing an update:** in-app updates offer only the GitHub release marked
+**Latest**. Publish a new version as a pre-release, test it, then mark it as the
+latest release to offer it to everyone; marking it as a pre-release again stops
+new in-app updates to it. To try the in-app update with a pre-release first, run
+the installed updater with a test feed, for example
+`"C:\Program Files\DLB Precision Monitor\DlbPrecision.Updater.exe" --feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/v0.1.9`.
+A feed can only choose which release to offer; the same version and signature
+checks apply. `DlbPrecision.Updater.exe --render-preview <folder>` saves pictures
+of each updater screen.
 
 For accessibility/UI testing only, `--test-window` exposes the otherwise taskbar-hidden widget to native test tools. Regular launches omit this switch. `--reset-position` recovers saved offscreen placement.
 

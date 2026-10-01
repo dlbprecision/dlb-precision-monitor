@@ -107,7 +107,7 @@ outputs; it does not establish source freshness, so release builds should rebuil
    LibreHardwareMonitor runtime hash. Preserve all third-party bytes and PawnIO's
    existing publisher signature.
 2. Sign only staged `DlbPrecision.Monitor.exe`, `DlbPrecision.Service.exe`,
-   `DlbPrecision.Shared.dll` and `DlbPrecision.Sensors.dll`. Original build outputs
+   `DlbPrecision.Shared.dll`, `DlbPrecision.Sensors.dll` and `DlbPrecision.Updater.exe`. Original build outputs
    remain untouched by signing. Generate the runtime hash manifest afterward.
 3. In signed mode, Inno uses `SignTool=DlbArtifact` and `SignedUninstaller=yes`.
    Its `/S` command invokes the same PowerShell wrapper for the temporary
@@ -133,11 +133,25 @@ Authenticode. Neither constitutes a live signing test.
 
 After a live signed build, test installation, upgrade from the previous pilot,
 reboot/startup and uninstall on Windows 11. Track completed checks and outstanding
-pilot coverage in [validation](VALIDATION.md). Verify the installed four DLB files
+pilot coverage in [validation](VALIDATION.md). Verify the installed five DLB files
 and `unins*.exe` with the same expected publisher and required timestamp. Confirm
 the bundled PawnIO hash still matches the vendor manifest. Update the release
 notes and unsigned-pilot wording before publishing a signed release under a new
 version; preserve old releases and their original checksums.
+
+## In-app updater trust
+
+The in-app updater installs a downloaded setup only when its SHA-256 matches the
+release's `.sha256` file, Windows verifies the Authenticode signature with
+revocation checks, the signer's common name and organization are both exactly
+`DLB Precision, LLC`, the chain ends at `Microsoft Identity Verification Root
+Certificate Authority 2020`, the certificate is for code signing, the signature
+is timestamped, and setup's product version equals the release version. No leaf
+thumbprint is pinned, so certificate rotation every few days needs no app change.
+
+If DLB's validated publisher name or signing service ever changes, installed
+copies will refuse releases signed the new way. Publish such a release with
+instructions for a one-time manual install, after which in-app updates resume.
 
 A valid publisher signature does not guarantee immediate SmartScreen reputation
 or replace malware detection review. See [Microsoft's code-signing guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options).
