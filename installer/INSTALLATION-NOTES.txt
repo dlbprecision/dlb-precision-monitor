@@ -28,6 +28,10 @@ For deployments launched from an already elevated terminal or another account,
 launch the monitor from the target user's Start menu and configure startup there.
 User display preferences are preserved on uninstall for a future reinstall.
 
+Later versions can be installed from the monitor: right-click it and choose
+Check for updates. The monitor checks only when asked, verifies the download is
+signed by DLB Precision, LLC before installing it, and reopens afterward.
+
 The monitor is designed to stay on another display while you play. It does not
 inject an overlay into games. Verify your games during the pilot.
 

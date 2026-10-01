@@ -65,6 +65,9 @@ Name: "{autodesktop}\DLB Precision Monitor"; Filename: "{app}\DlbPrecision.Monit
 
 [Run]
 Filename: "{app}\DlbPrecision.Monitor.exe"; Parameters: "--from-installer"; Description: "Open DLB Precision Monitor"; Flags: postinstall nowait skipifsilent runasoriginaluser
+; In-app updates run setup silently, which skips the entry above. Reopen the widget for the
+; person who clicked Update; other silent deployments keep their existing behavior.
+Filename: "{app}\DlbPrecision.Monitor.exe"; Parameters: "--from-installer"; Flags: nowait runasoriginaluser; Check: IsInAppUpdate
 
 [Code]
 const
@@ -299,6 +302,11 @@ begin
   if (CurPageID = wpFinished) and StartupFailed then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
       'Launch at sign-in was not enabled. Open DLB Precision Monitor from your Start menu as your normal user, then enable it in Settings. This can occur when setup is started from an already elevated administrator session.';
+end;
+
+function IsInAppUpdate: Boolean;
+begin
+  Result := ExpandConstant('{param:DLBUPDATE|0}') = '1';
 end;
 
 function GetCustomSetupExitCode: Integer;

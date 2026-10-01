@@ -97,7 +97,8 @@ if (-not (Test-Path -LiteralPath $IsccPath)) { throw "Inno compiler missing: $Is
 
 $projects = @(
     @{ Name = 'Monitor'; Path = 'src\DlbPrecision.Monitor\DlbPrecision.Monitor.csproj' },
-    @{ Name = 'Service'; Path = 'src\DlbPrecision.Service\DlbPrecision.Service.csproj' }
+    @{ Name = 'Service'; Path = 'src\DlbPrecision.Service\DlbPrecision.Service.csproj' },
+    @{ Name = 'Updater'; Path = 'src\DlbPrecision.Updater\DlbPrecision.Updater.csproj' }
 )
 
 foreach ($project in $projects) {
@@ -111,7 +112,7 @@ foreach ($project in $projects) {
         if ($LASTEXITCODE -ne 0) { throw "$($project.Name) build failed." }
     }
     $expectedFileVersion = if ($Version.Split('.').Count -eq 3) { $Version + '.0' } else { $Version }
-    foreach ($binary in (Get-ChildItem -LiteralPath $project.Output -File | Where-Object { $_.Name -match '^DlbPrecision\.(Monitor|Service|Shared|Sensors)\.(exe|dll)$' })) {
+    foreach ($binary in (Get-ChildItem -LiteralPath $project.Output -File | Where-Object { $_.Name -match '^DlbPrecision\.(Monitor|Service|Shared|Sensors|Updater)\.(exe|dll)$' })) {
         if ($binary.VersionInfo.FileVersion -ne $expectedFileVersion) {
             throw "Build output version mismatch for $($binary.Name): expected $expectedFileVersion, found $($binary.VersionInfo.FileVersion). Rebuild without -SkipBuild."
         }
@@ -147,7 +148,7 @@ foreach ($project in $projects) {
         $packages[$library.Name] = @{ Directory = $packageDirectory; Sha512 = $library.Value.sha512 }
     }
 }
-$dlbBinaries = @('DlbPrecision.Monitor.exe','DlbPrecision.Service.exe','DlbPrecision.Shared.dll','DlbPrecision.Sensors.dll')
+$dlbBinaries = @('DlbPrecision.Monitor.exe','DlbPrecision.Service.exe','DlbPrecision.Shared.dll','DlbPrecision.Sensors.dll','DlbPrecision.Updater.exe')
 foreach ($required in ($dlbBinaries + 'LibreHardwareMonitorLib.dll')) {
     if (-not (Test-Path -LiteralPath (Join-Path $appStage $required))) { throw "Missing staged runtime file: $required" }
 }
