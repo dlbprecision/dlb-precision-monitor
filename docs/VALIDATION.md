@@ -5,7 +5,49 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
-## In-app updater development (unreleased)
+## September 30 v0.1.8 in-app updater
+
+v0.1.8 adds **Check for updates** (Settings and the right-click/tray menu). A
+separate signed `DlbPrecision.Updater.exe` does the check, download,
+verification and install, so the widget loads no network code.
+
+- **Signed release candidate.** **7,464,112 bytes**, SHA256
+  `2eb6005d256f8b113bf1bf5079d46fa67e195cf16e25571893bc7072149c3657`
+  (`release-0.1.8-signed-attempt-2`). Setup, its uninstaller and the five DLB
+  binaries, now including the updater, carry valid, timestamped **DLB Precision,
+  LLC** signatures. A signed local test build versioned **0.1.7.9** was built from
+  the same commit and never published.
+- **Checks:** **144** client/startup/updater/integration assertions (including
+  live verification of the installed DLB files and a tampered copy), **15**
+  sensor-selection, **52** widget and **14** updater smoke checks. Zero warnings.
+- **End to end on the office PC**, driving the installed updater's window through
+  UI Automation:
+  - **Real GitHub feed** with no Latest release yet: "You're up to date"; the
+    updater ran from its private `%TEMP%\DLBPrecision-Update-…` copy, and the
+    folder was removed when it closed.
+  - **Unreachable server** (`https://127.0.0.1:9/`): a friendly network message and
+    a working **Try again**.
+  - **Tampered installer** with a matching checksum: refused with
+    `0x80096010` (bad digest). No setup process started, the installed version and
+    the running widget were untouched.
+  - **Window closed with X** while an update was offered: the temporary folder was
+    still removed.
+  - **Update 0.1.7.9 → 0.1.8** through a local feed describing the release
+    candidate: screens went verifying, installing, "installed and reopened"; the
+    widget reopened at its saved 682×101 position, on top. All installed binaries
+    report **0.1.8.0** with valid signatures, the service and PawnIO were running,
+    and the settings file was byte-for-byte unchanged. Launch at sign-in, turned
+    off with the monitor's own switch beforehand, **stayed off** (then restored to
+    the original entry), and no Public desktop shortcut was created. While setup
+    ran, the installer could not be opened for writing or deleted. No temporary
+    folder or failure log remained.
+  - After the update the widget had keyboard focus. Windows activates the
+    remaining top-level window when the updater window closes; the updater runs
+    only when someone clicks it, so this does not affect gaming. Startup and
+    shortcut shows were verified not to take focus in v0.1.7.
+- **Resource use on 0.1.8**: widget about **0.31%** of one logical processor and
+  **31.7 MB** private memory with no network modules loaded and no updater
+  process while idle; service about **1.5%** and **48.7 MB**.
 
 Plan task 1 checked how setup behaves when started the way the updater starts it:
 not elevated, with `/SILENT /SUPPRESSMSGBOXES /NOCANCEL /NORESTART
@@ -16,7 +58,9 @@ recorded the completed installation. This shows the non-elevated setup process
 waits for the elevated one and returns its result. Inno Setup does not document
 the exit code for a declined prompt, so the updater judges "cancelled" by what
 changed (installed version unchanged and the widget never closed) rather than by
-one code. The decline path still needs a check on a PC with default UAC settings.
+one code. The decline path still needs a check on a PC with default UAC settings, as does
+an in-app update offered by the real GitHub feed once a release newer than 0.1.8
+is marked **Latest**.
 
 A separate review agent found that publisher checks were not yet bound to the
 certificate Windows verified, that silent updates would re-apply first-install
