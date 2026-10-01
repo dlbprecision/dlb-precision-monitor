@@ -6,10 +6,15 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Security.Principal;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
+
+// The updater runs from a temporary folder; Windows libraries must only ever come from System32.
+[assembly: DefaultDllImportSearchPaths(DllImportSearchPath.System32)]
 
 namespace DlbPrecision.Updater
 {
@@ -27,23 +32,32 @@ namespace DlbPrecision.Updater
             {
                 if (args.Length >= 1 && args[0] == "--smoke-test") { RunSmokeTests(args.Length >= 2 ? args[1] : null); return 0; }
                 if (args.Length >= 2 && args[0] == "--render-preview") { RenderPreviews(args[1]); return 0; }
+                if (args.Length >= 3 && args[0] == "--cleanup") { RemoveAfterExit(args[1], args[2]); return 0; }
 
                 string? feed = Value(args, "--feed");
-                string installDirectory = Value(args, "--install-dir") ?? AppDomain.CurrentDomain.BaseDirectory;
+                string ownFolder = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
+                string installDirectory = Value(args, "--install-dir") ?? ownFolder;
                 string user = WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
                 string mutexName = @"Local\DLBPrecision.Updater." + user;
-                if (!args.Contains("--relocated"))
+                if (!IsRelocatedFolder(ownFolder))
                 {
                     if (Mutex.TryOpenExisting(mutexName, out Mutex? existing)) { existing.Dispose(); FocusExistingWindow(); return 0; }
                     Relocate(installDirectory, feed);
                     return 0;
                 }
+                Application.SetUnhandledExceptionMode(UnhandledExceptionMode.CatchException);
+                Application.ThreadException += (sender, error) => MessageBox.Show("The updater hit an unexpected problem.\n\n" + error.Exception.Message,
+                    UpdaterForm.WindowTitle, MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 using (var instance = new Mutex(true, mutexName, out bool created))
                 {
-                    if (!created) { FocusExistingWindow(); return 0; }
-                    using (var form = new UpdaterForm(installDirectory, feed, AppDomain.CurrentDomain.BaseDirectory)) Application.Run(form);
-                    instance.ReleaseMutex();
+                    if (created)
+                    {
+                        using (var form = new UpdaterForm(installDirectory, feed, ownFolder)) Application.Run(form);
+                        instance.ReleaseMutex();
+                    }
+                    else FocusExistingWindow();
                 }
+                ScheduleRemoval(installDirectory, ownFolder);
                 return 0;
             }
             catch (Exception error)
@@ -65,11 +79,60 @@ namespace DlbPrecision.Updater
             string copy = Path.Combine(folder, Path.GetFileName(self));
             File.Copy(self, copy);
             if (File.Exists(self + ".config")) File.Copy(self + ".config", copy + ".config");
-            string arguments = "--relocated --install-dir " + Quote(installDirectory) + (feed != null ? " --feed " + Quote(feed) : "");
+            string arguments = "--install-dir " + Quote(installDirectory) + (feed != null ? " --feed " + Quote(feed) : "");
             using (Process.Start(new ProcessStartInfo(copy, arguments) { UseShellExecute = false, WorkingDirectory = folder })) { }
         }
 
-        // A running copy cannot delete itself, so each check removes copies left by earlier checks.
+        internal static bool IsRelocatedFolder(string folder)
+        {
+            string full = Path.GetFullPath(folder).TrimEnd('\\');
+            string temp = Path.GetFullPath(Path.GetTempPath()).TrimEnd('\\');
+            return string.Equals(Path.GetDirectoryName(full), temp, StringComparison.OrdinalIgnoreCase)
+                && Regex.IsMatch(Path.GetFileName(full), "^" + FolderPrefix + "[0-9a-f]{32}$", RegexOptions.CultureInvariant);
+        }
+
+        // A running copy cannot delete its own folder. The installed updater removes it once this copy has exited.
+        private static void ScheduleRemoval(string installDirectory, string folder)
+        {
+            string cleaner = Path.Combine(installDirectory, Path.GetFileName(Assembly.GetExecutingAssembly().Location));
+            if (!File.Exists(cleaner) || IsRelocatedFolder(Path.GetDirectoryName(cleaner))) return;
+            try
+            {
+                using (Process.Start(new ProcessStartInfo(cleaner, "--cleanup " + Quote(folder) + " " + Process.GetCurrentProcess().Id)
+                    { UseShellExecute = false, WorkingDirectory = installDirectory })) { }
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                // The next check removes the folder instead.
+            }
+        }
+
+        // Deletes only a DLB update folder in this user's temporary folder, after the copy using it has exited.
+        private static void RemoveAfterExit(string folderArgument, string processArgument)
+        {
+            string folder = Path.GetFullPath(folderArgument);
+            if (!IsRelocatedFolder(folder) || !int.TryParse(processArgument, out int processId)) return;
+            try
+            {
+                using (Process process = Process.GetProcessById(processId)) process.WaitForExit(120000);
+            }
+            catch (ArgumentException) { /* Already exited. */ }
+            catch (InvalidOperationException) { /* Already exited. */ }
+            for (int attempt = 0; attempt < 10; attempt++)
+            {
+                try
+                {
+                    if (Directory.Exists(folder)) Directory.Delete(folder, true);
+                    return;
+                }
+                catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
+                {
+                    Thread.Sleep(500); // Antivirus or Windows may briefly hold a file just written.
+                }
+            }
+        }
+
+        // A copy that could not be removed at exit is removed by a later check.
         private static void RemoveStaleFolders()
         {
             foreach (string folder in Directory.EnumerateDirectories(Path.GetTempPath(), FolderPrefix + "*"))
@@ -108,7 +171,11 @@ namespace DlbPrecision.Updater
         }
 
         // A trailing backslash before the closing quote would escape it on the command line.
-        internal static string Quote(string value) => "\"" + value.TrimEnd('\\') + "\"";
+        internal static string Quote(string value)
+        {
+            if (value.IndexOf('"') >= 0) throw new ArgumentException("Quotes are not allowed in update paths or feed addresses.");
+            return "\"" + value.TrimEnd('\\') + "\"";
+        }
 
         private static UpdateOffer SampleOffer()
         {
@@ -206,6 +273,14 @@ namespace DlbPrecision.Updater
                 "Versions display as three parts, keeping a test build's fourth part");
             verify(UpdaterForm.KeptLogPath.EndsWith(@"DLBPrecision\Monitor\update-setup.log", StringComparison.OrdinalIgnoreCase),
                 "A failed update's setup log is kept with the monitor's settings");
+            verify(IsRelocatedFolder(Path.Combine(Path.GetTempPath(), FolderPrefix + Guid.NewGuid().ToString("N")))
+                && !IsRelocatedFolder(@"C:\Program Files\DLB Precision Monitor")
+                && !IsRelocatedFolder(Path.Combine(Path.GetTempPath(), FolderPrefix + "evil"))
+                && !IsRelocatedFolder(Path.Combine(Path.GetTempPath(), "nested", FolderPrefix + Guid.NewGuid().ToString("N"))),
+                "Only this user's own DLB update folders count as temporary copies, so cleanup can never delete anything else");
+            bool quoteRefused = false;
+            try { Quote("C:\\x\" --other"); } catch (ArgumentException) { quoteRefused = true; }
+            verify(quoteRefused, "A quote in a path or feed address cannot add command-line arguments");
             string report = results.Count + " checks passed. No network, setup or install folder was used.\n" + string.Join("\n", results);
             if (reportPath != null) File.WriteAllText(reportPath, report);
         }

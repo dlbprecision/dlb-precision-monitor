@@ -46,6 +46,7 @@ namespace DlbPrecision.Updater
     internal static class ReleaseFeed
     {
         public const string LatestUrl = "https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/latest";
+        public const string DownloadPrefix = "https://github.com/dlbprecision/dlb-precision-monitor/releases/download/";
         private const int MaximumBytes = 1024 * 1024;
         private const int TimeoutMilliseconds = 15000;
         private const string NetworkMessage = "Couldn't reach the update server. Check your internet connection.";
@@ -59,6 +60,9 @@ namespace DlbPrecision.Updater
             {
                 if (IsLocal(source))
                 {
+                    // A network share would make Windows send this PC's sign-in to that server.
+                    if (source.StartsWith(@"\\", StringComparison.Ordinal) || (Uri.TryCreate(source, UriKind.Absolute, out Uri? shareUri) && shareUri.IsUnc))
+                        return new FeedResult(FeedStatus.Invalid, null, "A network share can't be used as a test update feed.");
                     string path = Uri.TryCreate(source, UriKind.Absolute, out Uri? fileUri) ? fileUri.LocalPath : Path.GetFullPath(source);
                     var file = new FileInfo(path);
                     if (!file.Exists) return new FeedResult(FeedStatus.Invalid, null, "The test update feed file was not found.");
@@ -74,10 +78,14 @@ namespace DlbPrecision.Updater
                 request.Timeout = TimeoutMilliseconds;
                 request.ReadWriteTimeout = TimeoutMilliseconds;
                 request.AutomaticDecompression = DecompressionMethods.GZip | DecompressionMethods.Deflate;
+                request.MaximumAutomaticRedirections = 5;
+                Downloader.UseSignInForProxy(request);
                 using (var response = (HttpWebResponse)request.GetResponse())
                 using (Stream body = response.GetResponseStream())
                 using (var buffer = new MemoryStream())
                 {
+                    if (response.ResponseUri.Scheme != Uri.UriSchemeHttps)
+                        return new FeedResult(FeedStatus.Invalid, null, "The update server redirected to an insecure address.");
                     var chunk = new byte[16384];
                     int read;
                     while ((read = body.Read(chunk, 0, chunk.Length)) > 0)
@@ -105,7 +113,8 @@ namespace DlbPrecision.Updater
             {
                 return new FeedResult(FeedStatus.Invalid, null, "The update information could not be read.");
             }
-            catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is UriFormatException)
+            catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is UriFormatException
+                || error is ArgumentException || error is NotSupportedException)
             {
                 return new FeedResult(FeedStatus.Invalid, null, "The update information could not be read.");
             }

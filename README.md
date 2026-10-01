@@ -21,8 +21,10 @@ open **Settings**, and choose **Check for updates…**. If a newer version is
 available, its notes are shown; choose **Update now**. The monitor downloads the
 update, confirms it is genuinely signed by DLB Precision, LLC, and installs it.
 If Windows asks for permission, choose **Yes**. The monitor closes and reopens on
-the new version with your settings, size and position kept. It checks only when
-you ask, and only then contacts GitHub.
+the new version with your settings, size and position kept, including whether
+it launches at sign-in. It checks only when you ask, and only then contacts
+GitHub. If another Windows user on the same PC also has the monitor open, setup
+closes their copy too; it reopens at their next sign-in or from the shortcut.
 
 **Updating from v0.1.7 or earlier, or by hand:** download the current setup EXE
 above, right-click the monitor and choose **Exit**, then run the new setup. There

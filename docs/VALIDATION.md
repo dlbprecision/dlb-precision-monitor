@@ -5,6 +5,27 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## In-app updater development (unreleased)
+
+Plan task 1 checked how setup behaves when started the way the updater starts it:
+not elevated, with `/SILENT /SUPPRESSMSGBOXES /NOCANCEL /NORESTART
+/RESTARTEXITCODE=3010 /DLBUPDATE=1`. The office PC's User Account Control is set to
+elevate administrators **without prompting**, so no Windows prompt appeared: setup
+reinstalled v0.1.7 and returned exit code **0** after 1.5 seconds, after its log
+recorded the completed installation. This shows the non-elevated setup process
+waits for the elevated one and returns its result. Inno Setup does not document
+the exit code for a declined prompt, so the updater judges "cancelled" by what
+changed (installed version unchanged and the widget never closed) rather than by
+one code. The decline path still needs a check on a PC with default UAC settings.
+
+A separate review agent found that publisher checks were not yet bound to the
+certificate Windows verified, that silent updates would re-apply first-install
+tasks (re-enabling launch at sign-in), and smaller hardening items. All were
+fixed before building a release candidate: one verified signer, a trusted chain to
+the pinned Microsoft root, `/MERGETASKS` from the person's current choices,
+bounded release-note formatting, network-share refusal, temporary-folder cleanup
+and full fake-setup tests.
+
 ## September 30 v0.1.7 review fixes
 
 Code-review fixes, first merged from branch `fix/widget-review-fixes`, then
