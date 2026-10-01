@@ -23,10 +23,11 @@ internal static class Program
             SensorStartupTests();
             GpuRecoveryTests();
             SamplePolicyTests();
+            UpdaterTests.Run(Check, Array.IndexOf(args, "--integration") >= 0);
             await ClientTests();
             if (Array.IndexOf(args, "--integration") >= 0)
                 await IntegrationTests(Array.IndexOf(args, "--allow-console-host") >= 0);
-            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, driver startup/recovery, GPU recovery, sample sharing, protocol, IPC timeouts/cancellation" +
+            Console.WriteLine("PASS: " + assertions + " assertions (serialization, unavailable data, driver startup/recovery, GPU recovery, sample sharing, updater, protocol, IPC timeouts/cancellation" +
                 (Array.IndexOf(args, "--integration") >= 0 ? ", live service" : "") + ").");
             return 0;
         }
