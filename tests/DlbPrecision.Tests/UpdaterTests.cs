@@ -75,6 +75,17 @@ internal static class UpdaterTests
         check(UpdateOffer.Decide(Release("v0.1.9", size: 0), installed, false, false).Status == OfferStatus.NotAvailable
             && UpdateOffer.Decide(Release("v0.1.9", size: Downloader.MaximumBytes + 1), installed, false, false).Status == OfferStatus.NotAvailable,
             "Empty or oversized installers are refused before downloading.");
+        ReleaseInfo elsewhere = Release("v0.1.9");
+        foreach (ReleaseAsset asset in elsewhere.Assets) asset.DownloadUrl = asset.DownloadUrl.Replace("https://github.com/", "https://example.test/");
+        check(UpdateOffer.Decide(Release("v0.1.9"), installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.Available
+            && UpdateOffer.Decide(elsewhere, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
+            "The real feed only downloads from DLB's own GitHub release files.");
+        check(UpdateOffer.Decide(Release("v\u0660.\u0661.\u0669"), installed, false, false).Status == OfferStatus.NotAvailable,
+            "Tags with non-ASCII digits are refused instead of crashing.");
+        ReleaseInfo unc = Release("v0.1.9", scheme: "file");
+        foreach (ReleaseAsset asset in unc.Assets) asset.DownloadUrl = "file://server/share/" + asset.Name;
+        check(UpdateOffer.Decide(unc, installed, false, true).Status == OfferStatus.NotAvailable,
+            "Network-share downloads are refused even for a local test feed.");
     }
 
     private static void Feeds(Action<bool, string> check)
@@ -112,6 +123,12 @@ internal static class UpdaterTests
         finally { Directory.Delete(folder, true); }
         check(ReleaseFeed.Fetch("http://example.test/release.json", "DLB-test").Status == FeedStatus.Invalid,
             "Feeds must use HTTPS or a local file.");
+        var uncTimer = Stopwatch.StartNew();
+        check(ReleaseFeed.Fetch(@"\\updates.example.test\share\release.json", "DLB-test").Status == FeedStatus.Invalid
+            && uncTimer.Elapsed < TimeSpan.FromSeconds(2),
+            "Network-share feeds are refused without contacting the share.");
+        check(ReleaseFeed.Fetch("C:\\bad|path\\release.json", "DLB-test").Status == FeedStatus.Invalid,
+            "A malformed feed path is reported instead of crashing.");
         var timer = Stopwatch.StartNew();
         FeedResult unreachable = ReleaseFeed.Fetch("https://127.0.0.1:9/release.json", "DLB-test");
         check(unreachable.Status == FeedStatus.Network && unreachable.Message.Length > 0 && timer.Elapsed < TimeSpan.FromSeconds(20),
@@ -140,7 +157,11 @@ internal static class UpdaterTests
         ChainCommonNames = new List<string> { "DLB Precision, LLC", "Microsoft ID Verified CS EOC CA 04",
             "Microsoft ID Verified Code Signing PCA 2021", "Microsoft Identity Verification Root Certificate Authority 2020" },
         CodeSigning = true,
-        Timestamped = true
+        Timestamped = true,
+        SingleSigner = true,
+        SignatureValid = true,
+        ChainTrusted = true,
+        RootThumbprint = PublisherPolicy.MicrosoftIdentityRootThumbprint
     };
 
     private static void Publishers(Action<bool, string> check)
@@ -158,6 +179,14 @@ internal static class UpdaterTests
         check(PublisherPolicy.Evaluate(facts) != null, "A certificate not issued for code signing is refused.");
         facts = GoodFacts(); facts.Timestamped = false;
         check(PublisherPolicy.Evaluate(facts) != null, "An untimestamped signature is refused.");
+        facts = GoodFacts(); facts.SingleSigner = false;
+        check(PublisherPolicy.Evaluate(facts) != null, "A file with more than one signer is refused.");
+        facts = GoodFacts(); facts.SignatureValid = false;
+        check(PublisherPolicy.Evaluate(facts) != null, "A signer certificate that did not produce the signature is refused.");
+        facts = GoodFacts(); facts.ChainTrusted = false;
+        check(PublisherPolicy.Evaluate(facts) != null, "A chain that only names Microsoft's root, without Windows trusting it, is refused.");
+        facts = GoodFacts(); facts.RootThumbprint = new string('0', 40);
+        check(PublisherPolicy.Evaluate(facts) != null, "A different root certificate with Microsoft's name is refused.");
     }
 
     private static void Outcomes(Action<bool, string> check)
@@ -177,10 +206,21 @@ internal static class UpdaterTests
         foreach (SetupOutcome outcome in Enum.GetValues(typeof(SetupOutcome)))
             check(SetupRunner.Message(outcome, 7).Length > 0, "Every setup outcome has a message: " + outcome);
 
-        string arguments = SetupRunner.Arguments(@"C:\Temp\update setup.log");
+        check(SetupRunner.Interpret(2, false, true) == SetupOutcome.Failed && SetupRunner.Interpret(5, true, true) == SetupOutcome.Failed,
+            "A cancel code after setup had changed things is a failure.");
+        check(SetupRunner.Interpret(3010, false, true) == SetupOutcome.Failed && SetupRunner.Interpret(20, false, true) == SetupOutcome.Failed,
+            "Success codes without the new version installed are failures.");
+        check(SetupRunner.TaskOptions(startupEnabled: true, desktopShortcut: true) == ""
+            && SetupRunner.TaskOptions(false, true) == "/MERGETASKS=\"!startup\""
+            && SetupRunner.TaskOptions(true, false) == "/MERGETASKS=\"!desktopicon\""
+            && SetupRunner.TaskOptions(false, false) == "/MERGETASKS=\"!startup,!desktopicon\"",
+            "An in-app update keeps launch at sign-in and the desktop shortcut as the person left them.");
+        RunWithFakeSetup(check);
+
+        string arguments = SetupRunner.Arguments(@"C:\Temp\update setup.log", "/MERGETASKS=\"!startup\"");
         check(arguments.Contains("/SILENT") && arguments.Contains("/SUPPRESSMSGBOXES") && arguments.Contains("/NOCANCEL")
             && arguments.Contains("/NORESTART") && arguments.Contains("/RESTARTEXITCODE=3010") && arguments.Contains("/DLBUPDATE=1")
-            && arguments.Contains("/LOG=\"C:\\Temp\\update setup.log\""),
+            && arguments.Contains("/LOG=\"C:\\Temp\\update setup.log\"") && arguments.EndsWith("/MERGETASKS=\"!startup\""),
             "Setup runs silently, never restarts Windows by itself, reports restarts and marks an in-app update.");
     }
 
@@ -193,6 +233,9 @@ internal static class UpdaterTests
         check(PlainText.FromMarkdown(null) == "", "Missing release notes show nothing.");
         string longText = PlainText.FromMarkdown(new string('x', 10000), 100);
         check(longText.Length <= 100 && longText.EndsWith("…"), "Very long release notes are shortened.");
+        var notesTimer = Stopwatch.StartNew();
+        PlainText.FromMarkdown(new string('[', 120000));
+        check(notesTimer.Elapsed < TimeSpan.FromSeconds(2), "Release notes built to slow down text formatting cannot freeze the updater.");
     }
 
     private static void Downloads(Action<bool, string> check)
@@ -230,6 +273,11 @@ internal static class UpdaterTests
             check(File.ReadAllBytes(target).SequenceEqual(data), "A local test feed asset is downloaded.");
             check(Throws<InvalidDataException>(() => Downloader.Download(uri, Path.Combine(folder, "other.bin"), 3000, false, null, CancellationToken.None)),
                 "Local files cannot be downloaded from the real update feed.");
+            check(Throws<InvalidDataException>(() => Downloader.Download(new Uri("http://example.test/setup.exe"), Path.Combine(folder, "http.bin"), 3000, false, null, CancellationToken.None))
+                && !File.Exists(Path.Combine(folder, "http.bin")),
+                "Unencrypted downloads are refused before anything is written.");
+            check(Throws<InvalidDataException>(() => Downloader.Download(new Uri("file://server/share/setup.exe"), Path.Combine(folder, "unc.bin"), 3000, true, null, CancellationToken.None)),
+                "Network-share downloads are refused.");
         }
         finally { Directory.Delete(folder, true); }
     }
@@ -242,17 +290,17 @@ internal static class UpdaterTests
         {
             string unsigned = Path.Combine(folder, "unsigned.exe");
             File.WriteAllBytes(unsigned, Encoding.ASCII.GetBytes("MZ not really a program"));
-            check(!VerifyCopy(unsigned, null).Ok, "An unsigned file is never accepted.");
-            VerificationResult mismatch = VerifyCopy(unsigned, null, wrongHash: true);
+            check(!VerifyCopy(unsigned, "1.0").Ok, "An unsigned file is never accepted.");
+            VerificationResult mismatch = VerifyCopy(unsigned, "1.0", wrongHash: true);
             check(!mismatch.Ok && mismatch.Reason.IndexOf("checksum", StringComparison.OrdinalIgnoreCase) >= 0,
                 "A file that does not match its checksum is refused first.");
 
             string dotnet = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "dotnet", "dotnet.exe");
             if (File.Exists(dotnet))
             {
-                VerificationResult wrongPublisher = VerifyCopy(dotnet, null);
-                check(!wrongPublisher.Ok && wrongPublisher.Reason.IndexOf("publisher", StringComparison.OrdinalIgnoreCase) >= 0,
-                    "A validly signed program from another publisher is refused.");
+                VerificationResult wrongPublisher = VerifyCopy(dotnet, FileVersionInfo.GetVersionInfo(dotnet).ProductVersion?.Trim() ?? "");
+                // Offline, Windows cannot finish the revocation check and refuses earlier; either way it is refused.
+                check(!wrongPublisher.Ok, "A validly signed program from another publisher is refused: " + wrongPublisher.Reason);
             }
 
             string installed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "DLB Precision Monitor", "DlbPrecision.Monitor.exe");
@@ -272,7 +320,62 @@ internal static class UpdaterTests
         finally { Directory.Delete(folder, true); }
     }
 
-    private static VerificationResult VerifyCopy(string path, string? expectedVersion, bool wrongHash = false)
+    private static void RunWithFakeSetup(Action<bool, string> check)
+    {
+        string folder = Path.Combine(Path.GetTempPath(), "DlbUpdaterSetup-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(folder);
+        try
+        {
+            string kept = Path.Combine(folder, "kept", "update-setup.log");
+            SetupResult Simulate(int exitCode, bool installs, bool closesWidget, bool reopensWidget, bool writesLog, List<string> reopened,
+                Exception? startError = null)
+            {
+                string version = "0.1.7.9";
+                var widgets = new List<int> { 41 };
+                var host = new SetupHost
+                {
+                    InstalledVersion = path => version,
+                    RunningWidgets = () => widgets.ToArray(),
+                    IsRunning = id => widgets.Contains(id),
+                    Reopen = path => reopened.Add(path),
+                    StartAndWait = (setup, arguments, working) =>
+                    {
+                        if (startError != null) throw startError;
+                        if (writesLog) File.WriteAllText(Path.Combine(working, "setup.log"), "fake setup log");
+                        if (closesWidget) widgets.Remove(41);
+                        if (installs) version = "0.1.8.0";
+                        if (reopensWidget) widgets.Add(77);
+                        return exitCode;
+                    }
+                };
+                if (File.Exists(kept)) File.Delete(kept);
+                return SetupRunner.Run(Path.Combine(folder, "setup.exe"), @"C:\Program Files\DLB Precision Monitor", folder, kept, "", host);
+            }
+
+            var reopenedWidgets = new List<string>();
+            SetupResult declined = Simulate(1, installs: false, closesWidget: false, reopensWidget: false, writesLog: false, reopenedWidgets);
+            check(declined.Outcome == SetupOutcome.Cancelled && reopenedWidgets.Count == 0 && declined.KeptLog == null,
+                "A declined Windows prompt reports cancelled and leaves the running widget alone.");
+            SetupResult updated = Simulate(0, true, true, true, true, reopenedWidgets);
+            check(updated.Outcome == SetupOutcome.Updated && reopenedWidgets.Count == 0 && updated.KeptLog == null,
+                "A successful update relies on setup reopening the widget and keeps no log.");
+            SetupResult failed = Simulate(4, false, true, false, true, reopenedWidgets);
+            check(failed.Outcome == SetupOutcome.Failed && reopenedWidgets.Count == 1 && failed.KeptLog == kept && File.Exists(kept),
+                "A failed update reopens the closed widget and keeps the setup log.");
+            reopenedWidgets.Clear();
+            SetupResult earlyFailure = Simulate(1, false, false, false, true, reopenedWidgets);
+            check(earlyFailure.Outcome == SetupOutcome.Cancelled && earlyFailure.KeptLog == kept,
+                "An update that stops before changing anything still keeps setup's log when it wrote one.");
+            SetupResult refused = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(1223));
+            check(refused.Outcome == SetupOutcome.Cancelled, "Declining a prompt shown by Windows before setup starts is reported as cancelled.");
+            SetupResult notStarted = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(8));
+            check(notStarted.Outcome == SetupOutcome.CouldNotStart && SetupRunner.Message(notStarted.Outcome, notStarted.ExitCode).Contains("couldn't start")
+                && notStarted.ExitCode == -1, "A Windows error starting setup is not confused with setup's own exit codes.");
+        }
+        finally { Directory.Delete(folder, true); }
+    }
+
+    private static VerificationResult VerifyCopy(string path, string expectedVersion, bool wrongHash = false)
     {
         string hash;
         using (var sha = SHA256.Create())

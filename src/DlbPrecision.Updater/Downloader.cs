@@ -16,6 +16,7 @@ namespace DlbPrecision.Updater
             CancellationToken token, string userAgent = "DLBPrecisionMonitor-Updater")
         {
             if (source.IsFile && !allowFile) throw new InvalidDataException("Local files can only be used by a local test feed.");
+            if (source.IsUnc) throw new InvalidDataException("Updates are never downloaded from a network share.");
             if (!source.IsFile && source.Scheme != Uri.UriSchemeHttps) throw new InvalidDataException("Updates are only downloaded over a secure connection.");
             try
             {
@@ -33,6 +34,7 @@ namespace DlbPrecision.Updater
                     request.ReadWriteTimeout = StallTimeoutMilliseconds;
                     request.AllowAutoRedirect = true;
                     request.MaximumAutomaticRedirections = 5;
+                    UseSignInForProxy(request);
                     using (token.Register(request.Abort))
                     using (var response = (HttpWebResponse)request.GetResponse())
                     {
@@ -53,6 +55,12 @@ namespace DlbPrecision.Updater
                 DeletePartial(destination);
                 throw;
             }
+        }
+
+        // Office networks often require Windows sign-in at the proxy; without it every request fails with 407.
+        internal static void UseSignInForProxy(HttpWebRequest request)
+        {
+            if (request.Proxy != null) request.Proxy.Credentials = CredentialCache.DefaultNetworkCredentials;
         }
 
         public static void Copy(Stream input, Stream output, long expectedSize, long maximumBytes, Action<long>? progress, CancellationToken token)

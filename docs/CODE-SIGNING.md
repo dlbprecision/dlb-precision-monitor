@@ -143,11 +143,21 @@ version; preserve old releases and their original checksums.
 
 The in-app updater installs a downloaded setup only when its SHA-256 matches the
 release's `.sha256` file, Windows verifies the Authenticode signature with
-revocation checks, the signer's common name and organization are both exactly
-`DLB Precision, LLC`, the chain ends at `Microsoft Identity Verification Root
-Certificate Authority 2020`, the certificate is for code signing, the signature
-is timestamped, and setup's product version equals the release version. No leaf
-thumbprint is pinned, so certificate rotation every few days needs no app change.
+revocation checks, the file has exactly one signer whose signature verifies under
+its certificate, the signer's common name and organization are both exactly
+`DLB Precision, LLC`, the certificate chain builds to a root this PC trusts and
+that root is `Microsoft Identity Verification Root Certificate Authority 2020`
+(thumbprint `F40042E2E5F7E8EF8189FED15519AECE42C3BFA2`, valid until 2045), the
+certificate is for code signing, the signature is timestamped, and setup's product
+version equals the release version. The root is pinned rather than the leaf, so
+certificate rotation every few days needs no app change. On the real feed, files
+must come from `https://github.com/dlbprecision/dlb-precision-monitor/releases/download/`.
+
+The verified setup is held open with writes and deletes blocked until it exits, so
+the bytes checked are the bytes Windows runs. Setup itself runs from the
+updater's private folder under the user's `%TEMP%`, the same exposure as running
+setup from the Downloads folder: software already running as that user could
+interfere with it there, which a publisher signature cannot prevent.
 
 If DLB's validated publisher name or signing service ever changes, installed
 copies will refuse releases signed the new way. Publish such a release with

@@ -50,6 +50,7 @@ namespace DlbPrecision.Updater
         private readonly bool startCheck;
         private readonly Font bodyFont = new Font("Segoe UI", 9.5f);
         private readonly Font titleFont = new Font("Segoe UI Semibold", 15);
+        private readonly Icon? windowIcon = LoadIcon();
         private readonly Label status = new Label { Name = "Status", AutoSize = false };
         private readonly TextBox notes = new TextBox { Name = "Notes", Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.FixedSingle };
         private readonly ProgressStrip progress = new ProgressStrip { Name = "Progress" };
@@ -73,6 +74,7 @@ namespace DlbPrecision.Updater
             this.workingFolder = workingFolder;
             this.startCheck = startCheck;
             Text = WindowTitle;
+            if (windowIcon != null) Icon = windowIcon;
             AutoScaleMode = AutoScaleMode.Dpi;
             Font = bodyFont;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -194,22 +196,31 @@ namespace DlbPrecision.Updater
 
         private async void StartCheck()
         {
-            ShowChecking();
-            if (!TryInstalledVersion(out Version installed))
+            try
             {
-                ShowError("DLB Precision Monitor was not found in " + installDirectory + ". Reinstall it, then try again.", null);
-                return;
+                ShowChecking();
+                if (!TryInstalledVersion(out Version installed))
+                {
+                    ShowError("DLB Precision Monitor was not found in " + installDirectory + ". Reinstall it, then try again.", null);
+                    return;
+                }
+                string source = feed ?? ReleaseFeed.LatestUrl;
+                FeedResult result = await Task.Run(() => ReleaseFeed.Fetch(source, UserAgent));
+                if (IsDisposed) return;
+                if (result.Status == FeedStatus.NoRelease) { ShowUpToDate(Display(installed)); return; }
+                if (result.Status != FeedStatus.Release) { ShowError(result.Message, StartCheck); return; }
+                bool testFeed = feed != null;
+                UpdateDecision decision = UpdateOffer.Decide(result.Release, installed, allowPrerelease: testFeed,
+                    allowFileUrls: testFeed && ReleaseFeed.IsLocal(source), requiredDownloadPrefix: testFeed ? null : ReleaseFeed.DownloadPrefix);
+                if (decision.Status == OfferStatus.UpToDate) ShowUpToDate(Display(installed));
+                else if (decision.Offer == null) ShowError("This update isn't available yet. Try again later.", StartCheck);
+                else ShowAvailable(decision.Offer);
             }
-            string source = feed ?? ReleaseFeed.LatestUrl;
-            FeedResult result = await Task.Run(() => ReleaseFeed.Fetch(source, UserAgent));
-            if (IsDisposed) return;
-            if (result.Status == FeedStatus.NoRelease) { ShowUpToDate(Display(installed)); return; }
-            if (result.Status != FeedStatus.Release) { ShowError(result.Message, StartCheck); return; }
-            bool testFeed = feed != null;
-            UpdateDecision decision = UpdateOffer.Decide(result.Release, installed, allowPrerelease: testFeed, allowFileUrls: testFeed && ReleaseFeed.IsLocal(source));
-            if (decision.Status == OfferStatus.UpToDate) ShowUpToDate(Display(installed));
-            else if (decision.Offer == null) ShowError("This update isn't available yet. Try again later.", StartCheck);
-            else ShowAvailable(decision.Offer);
+            catch (Exception error)
+            {
+                // Shown, not swallowed: an unexpected problem must not end in the .NET crash dialog.
+                ShowError("The updater hit an unexpected problem: " + error.Message, StartCheck);
+            }
         }
 
         private async void StartUpdate()
@@ -249,11 +260,12 @@ namespace DlbPrecision.Updater
                 package = new FileStream(installer, FileMode.Open, FileAccess.Read, FileShare.Read);
                 FileStream locked = package;
                 VerificationResult verdict = await Task.Run(() => PackageVerifier.Verify(locked, installer, expected, available.VersionText));
-                if (!verdict.Ok) { ShowError(verdict.Reason, null); return; }
+                if (!verdict.Ok) { ShowError(verdict.Reason, verdict.Retryable ? StartUpdate : (Action?)null); return; }
 
                 installing = true;
                 ShowInstalling();
-                SetupResult result = await Task.Run(() => SetupRunner.Run(installer, installDirectory, workingFolder, KeptLogPath));
+                string tasks = SetupRunner.TaskOptions(SetupRunner.StartupEnabled(), SetupRunner.DesktopShortcutExists());
+                SetupResult result = await Task.Run(() => SetupRunner.Run(installer, installDirectory, workingFolder, KeptLogPath, tasks));
                 installing = false;
                 ShowResult(result);
             }
@@ -272,6 +284,11 @@ namespace DlbPrecision.Updater
             catch (Exception error) when (error is IOException || error is UnauthorizedAccessException)
             {
                 ShowError("The update couldn't be saved on this PC (" + error.Message + "). Nothing was changed.", StartUpdate);
+            }
+            catch (Exception error)
+            {
+                // Shown, not swallowed. If setup had already run, the version in Settings tells the person where things stand.
+                ShowError("The updater hit an unexpected problem: " + error.Message + " Check the version shown in the monitor's Settings.", null);
             }
             finally
             {
@@ -318,8 +335,16 @@ namespace DlbPrecision.Updater
         private void OpenLog()
         {
             if (keptLog == null || !File.Exists(keptLog)) return;
-            try { using (Process.Start(new ProcessStartInfo("notepad.exe", "\"" + keptLog + "\"") { UseShellExecute = false })) { } }
+            // Full path: the updater runs from a temporary folder, which must not be able to supply its own "notepad".
+            string notepad = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+            try { using (Process.Start(new ProcessStartInfo(notepad, "\"" + keptLog + "\"") { UseShellExecute = false })) { } }
             catch (Win32Exception error) { ShowError("The setup log couldn't be opened: " + error.Message, null); }
+        }
+
+        private static Icon? LoadIcon()
+        {
+            using (Stream? stream = typeof(UpdaterForm).Assembly.GetManifestResourceStream("DlbPrecision.Updater.monitor.ico"))
+                return stream == null ? null : new Icon(stream);
         }
 
         protected override void Dispose(bool disposing)
@@ -330,7 +355,7 @@ namespace DlbPrecision.Updater
                 closeTimer.Dispose();
                 cancellation?.Dispose();
                 try { base.Dispose(disposing); }
-                finally { bodyFont.Dispose(); titleFont.Dispose(); }
+                finally { bodyFont.Dispose(); titleFont.Dispose(); windowIcon?.Dispose(); }
             }
             else base.Dispose(disposing);
         }

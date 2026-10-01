@@ -24,7 +24,8 @@ namespace DlbPrecision.Updater
 
     internal sealed class UpdateOffer
     {
-        private static readonly Regex TagPattern = new Regex(@"^v(\d{1,4})\.(\d{1,4})\.(\d{1,5})$", RegexOptions.CultureInvariant);
+        // [0-9], not \d: \d also matches other scripts' digits, which int.Parse rejects.
+        private static readonly Regex TagPattern = new Regex(@"^v([0-9]{1,4})\.([0-9]{1,4})\.([0-9]{1,5})$", RegexOptions.CultureInvariant);
 
         private UpdateOffer(Version version, string title, string notes, ReleaseAsset installer, ReleaseAsset checksum)
         {
@@ -58,7 +59,9 @@ namespace DlbPrecision.Updater
         public static Version Normalize(Version version) =>
             new Version(version.Major, Math.Max(0, version.Minor), Math.Max(0, version.Build), Math.Max(0, version.Revision));
 
-        public static UpdateDecision Decide(ReleaseInfo? release, Version installed, bool allowPrerelease, bool allowFileUrls)
+        // requiredDownloadPrefix is set for the real feed so files can only come from DLB's own GitHub releases.
+        public static UpdateDecision Decide(ReleaseInfo? release, Version installed, bool allowPrerelease, bool allowFileUrls,
+            string? requiredDownloadPrefix = null)
         {
             if (release == null || release.Draft || (release.Prerelease && !allowPrerelease)) return UpdateDecision.UpToDate();
             if (!TryParseTag(release.Tag, out Version version)) return UpdateDecision.NotAvailable();
@@ -72,12 +75,15 @@ namespace DlbPrecision.Updater
                 return UpdateDecision.NotAvailable();
             if (!AllowedDownload(installer.DownloadUrl, allowFileUrls) || !AllowedDownload(checksum.DownloadUrl, allowFileUrls))
                 return UpdateDecision.NotAvailable();
+            if (requiredDownloadPrefix != null && (!installer.DownloadUrl.StartsWith(requiredDownloadPrefix, StringComparison.Ordinal)
+                || !checksum.DownloadUrl.StartsWith(requiredDownloadPrefix, StringComparison.Ordinal)))
+                return UpdateDecision.NotAvailable();
 
             string title = release.Name.Length > 0 ? release.Name : "DLB Precision Monitor " + versionText;
             return UpdateDecision.Available(new UpdateOffer(version, title, PlainText.FromMarkdown(release.Body), installer, checksum));
         }
 
         private static bool AllowedDownload(string url, bool allowFileUrls) =>
-            Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || (allowFileUrls && uri.IsFile));
+            Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || (allowFileUrls && uri.IsFile && !uri.IsUnc));
     }
 }
