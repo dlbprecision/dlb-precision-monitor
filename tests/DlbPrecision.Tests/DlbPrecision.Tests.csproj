@@ -4,6 +4,15 @@
   <ItemGroup>
     <Compile Include="../../src/DlbPrecision.Service/SensorStartup.cs" Link="SensorStartup.cs" />
     <Compile Include="../../src/DlbPrecision.Service/SamplePolicy.cs" Link="SamplePolicy.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/ReleaseFeed.cs" Link="Updater/ReleaseFeed.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/UpdateOffer.cs" Link="Updater/UpdateOffer.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/Downloader.cs" Link="Updater/Downloader.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/PackageVerifier.cs" Link="Updater/PackageVerifier.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/SetupRunner.cs" Link="Updater/SetupRunner.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/PlainText.cs" Link="Updater/PlainText.cs" />
+    <Compile Include="../../src/DlbPrecision.Updater/NativeMethods.cs" Link="Updater/NativeMethods.cs" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Security" />
     <Reference Include="System.ServiceProcess" />
   </ItemGroup>
 </Project>
