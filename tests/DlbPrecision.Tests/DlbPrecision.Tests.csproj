@@ -3,6 +3,7 @@
   <ItemGroup><ProjectReference Include="../../src/DlbPrecision.Shared/DlbPrecision.Shared.csproj" /></ItemGroup>
   <ItemGroup>
     <Compile Include="../../src/DlbPrecision.Service/SensorStartup.cs" Link="SensorStartup.cs" />
+    <Compile Include="../../src/DlbPrecision.Service/SamplePolicy.cs" Link="SamplePolicy.cs" />
     <Reference Include="System.ServiceProcess" />
   </ItemGroup>
 </Project>

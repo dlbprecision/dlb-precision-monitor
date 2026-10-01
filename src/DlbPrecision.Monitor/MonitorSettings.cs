@@ -11,21 +11,47 @@ namespace DlbPrecision.Monitor
     [DataContract]
     internal sealed class MonitorSettings
     {
-        [DataMember] public int Version { get; set; } = 1;
+        [DataMember] public int Version { get; set; }
         [DataMember] public bool Vertical { get; set; }
         [DataMember] public bool Fahrenheit { get; set; }
-        [DataMember] public bool Branding { get; set; } = true;
+        [DataMember] public bool Branding { get; set; }
         [DataMember] public bool PositionLocked { get; set; }
-        [DataMember] public bool AlwaysOnTop { get; set; } = true;
-        [DataMember] public int OpacityPercent { get; set; } = 100;
-        [DataMember] public int RefreshMilliseconds { get; set; } = 1000;
+        [DataMember] public bool AlwaysOnTop { get; set; }
+        [DataMember] public int OpacityPercent { get; set; }
+        [DataMember] public int RefreshMilliseconds { get; set; }
         [DataMember] public string GpuId { get; set; } = "";
-        [DataMember] public uint HotkeyModifiers { get; set; } = NativeMethods.ModControl | NativeMethods.ModAlt;
-        [DataMember] public int HotkeyKey { get; set; } = (int)Keys.F10;
-        [DataMember] public int Left { get; set; } = int.MinValue;
-        [DataMember] public int Top { get; set; } = int.MinValue;
-        [DataMember] public int Width { get; set; } = 861;
-        [DataMember] public int Height { get; set; } = 128;
+        [DataMember] public uint HotkeyModifiers { get; set; }
+        [DataMember] public int HotkeyKey { get; set; }
+        [DataMember] public int Left { get; set; }
+        [DataMember] public int Top { get; set; }
+        [DataMember] public int Width { get; set; }
+        [DataMember] public int Height { get; set; }
+
+        public MonitorSettings() => SetDefaults();
+
+        // The JSON serializer skips constructors, so a setting missing from an older file would
+        // otherwise load as false or zero instead of its default.
+        [OnDeserializing]
+        private void OnDeserializing(StreamingContext context) => SetDefaults();
+
+        private void SetDefaults()
+        {
+            Version = 1;
+            Vertical = false;
+            Fahrenheit = false;
+            Branding = true;
+            PositionLocked = false;
+            AlwaysOnTop = true;
+            OpacityPercent = 100;
+            RefreshMilliseconds = 1000;
+            GpuId = "";
+            HotkeyModifiers = NativeMethods.ModControl | NativeMethods.ModAlt;
+            HotkeyKey = (int)Keys.F10;
+            Left = int.MinValue;
+            Top = int.MinValue;
+            Width = 861;
+            Height = 128;
+        }
 
         public MonitorSettings Clone() => (MonitorSettings)MemberwiseClone();
 
@@ -33,8 +59,9 @@ namespace DlbPrecision.Monitor
         {
             OpacityPercent = Math.Max(30, Math.Min(100, OpacityPercent));
             RefreshMilliseconds = RefreshMilliseconds == 2000 ? 2000 : 1000;
-            Width = Math.Max(100, Math.Min(6000, Width));
-            Height = Math.Max(80, Math.Min(6000, Height));
+            // Loose sanity bounds only; the window enforces the real 50% minimum for its display.
+            Width = Math.Max(50, Math.Min(6000, Width));
+            Height = Math.Max(40, Math.Min(6000, Height));
             GpuId = GpuId ?? "";
             if (!Hotkey.IsValid(HotkeyModifiers, HotkeyKey))
             {

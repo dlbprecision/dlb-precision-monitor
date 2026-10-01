@@ -7,6 +7,14 @@ using DlbPrecision.Shared;
 
 namespace DlbPrecision.Monitor
 {
+    // Saved can be true with a Message: the preferences were stored but one part (the shortcut) was not.
+    internal readonly struct SettingsApplyResult
+    {
+        public SettingsApplyResult(bool saved, string message) { Saved = saved; Message = message; }
+        public bool Saved { get; }
+        public string Message { get; }
+    }
+
     internal sealed class SettingsForm : Form
     {
         private readonly MonitorSettings settings;
@@ -33,7 +41,7 @@ namespace DlbPrecision.Monitor
         private int shortcutKey;
         private bool sizeDirty;
         private int appliedSizePercent;
-        public Func<MonitorSettings, bool, int?, string>? ApplySettings { get; set; }
+        public Func<MonitorSettings, bool, int?, SettingsApplyResult>? ApplySettings { get; set; }
 
         public SettingsForm(MonitorSettings current, SensorSnapshot? snapshot, string diagnostics, float widgetDpiScale = 1f)
         {
@@ -125,7 +133,8 @@ namespace DlbPrecision.Monitor
             };
             content.Controls.Add(diagnosticsLabel);
             diagnosticsTip.SetToolTip(diagnosticsLabel, diagnostics);
-            validation.SetBounds(26, 623, 435, 44); validation.ForeColor = Color.FromArgb(245, 169, 179);
+            validation.Name = "ValidationMessage";
+            validation.SetBounds(26, 623, 435, 44); validation.ForeColor = WarningColor;
             validation.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             Controls.Add(validation);
 
@@ -141,6 +150,19 @@ namespace DlbPrecision.Monitor
             close.Click += (sender, args) => Close();
             Controls.Add(apply); Controls.Add(close);
             AcceptButton = apply; CancelButton = close;
+        }
+
+        private static readonly Color WarningColor = Color.FromArgb(245, 169, 179);
+
+        // The widget's right-click menu can change layout and locking while Settings is open;
+        // reflect that here so a later Apply does not quietly undo it.
+        public void SyncWidgetState(bool vertical, bool locked, int sizePercent)
+        {
+            layout.SelectedIndex = vertical ? 1 : 0;
+            this.locked.Checked = locked;
+            appliedSizePercent = Math.Max(widgetSize.Minimum, Math.Min(widgetSize.Maximum, sizePercent));
+            widgetSize.Value = appliedSizePercent;
+            sizeDirty = false;
         }
 
         private void AddChoice(string text, ComboBox choice, int top, string[] options)
@@ -178,10 +200,11 @@ namespace DlbPrecision.Monitor
             settings.OpacityPercent = transparency.Value;
             settings.Branding = branding.Checked; settings.PositionLocked = locked.Checked; settings.AlwaysOnTop = onTop.Checked;
             settings.HotkeyModifiers = shortcutModifiers; settings.HotkeyKey = shortcutKey;
-            string error = ApplySettings?.Invoke(settings.Clone(), startup.Checked, sizeDirty ? widgetSize.Value : (int?)null) ?? "Unable to apply settings.";
-            if (error.Length == 0) { appliedSizePercent = widgetSize.Value; sizeDirty = false; }
-            validation.ForeColor = error.Length == 0 ? WidgetRenderer.Blue : Color.FromArgb(245, 169, 179);
-            validation.Text = error.Length == 0 ? "Saved." : error;
+            SettingsApplyResult result = ApplySettings?.Invoke(settings.Clone(), startup.Checked, sizeDirty ? widgetSize.Value : (int?)null)
+                ?? new SettingsApplyResult(false, "Unable to apply settings.");
+            if (result.Saved) { appliedSizePercent = widgetSize.Value; sizeDirty = false; }
+            validation.ForeColor = result.Saved && result.Message.Length == 0 ? WidgetRenderer.Blue : WarningColor;
+            validation.Text = result.Message.Length == 0 ? "Saved." : result.Message;
         }
 
         private sealed class GpuChoice

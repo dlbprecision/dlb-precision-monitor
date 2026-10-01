@@ -19,6 +19,7 @@ namespace DlbPrecision.Monitor
         private readonly System.Windows.Forms.Timer saveTimer = new System.Windows.Forms.Timer { Interval = 600 };
         private readonly NotifyIcon tray;
         private readonly Icon brandIcon = BrandIcon.Load();
+        private readonly Icon trayIcon = BrandIcon.Load(SystemInformation.SmallIconSize.Width);
         private readonly ContextMenuStrip menu = new ContextMenuStrip();
         private readonly ToolStripMenuItem showItem = new ToolStripMenuItem("Hide monitor");
         private readonly ToolStripMenuItem lockItem = new ToolStripMenuItem("Lock position and size");
@@ -36,7 +37,7 @@ namespace DlbPrecision.Monitor
         private int hotkeyId = 101;
         private bool hotkeyRegistered;
         private bool ownedResourcesDisposed;
-        private const int ActivateMessage = 0x8000 + 72;
+        internal const int ActivateMessage = 0x8000 + 72;
 
         public MonitorForm(bool resetPosition)
         {
@@ -52,10 +53,14 @@ namespace DlbPrecision.Monitor
             BackColor = WidgetRenderer.Background;
             SetStyle(ControlStyles.AllPaintingInWmPaint | ControlStyles.UserPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
             Icon = brandIcon;
+            // Window options set before the handle exists become creation styles, with no repositioning or flash.
+            TopMost = settings.AlwaysOnTop;
+            Opacity = settings.OpacityPercent / 100.0;
+            PlaceBeforeFirstShow();
 
             showItem.Click += (sender, args) => ToggleVisible();
-            lockItem.Click += (sender, args) => { settings.PositionLocked = !settings.PositionLocked; ApplyWindowOptions(); Save(); };
-            orientationItem.Click += (sender, args) => { ChangeOrientation(!settings.Vertical); Save(); };
+            lockItem.Click += (sender, args) => { settings.PositionLocked = !settings.PositionLocked; ApplyWindowOptions(); Save(); SyncSettingsWindow(); };
+            orientationItem.Click += (sender, args) => { ChangeOrientation(!settings.Vertical); Save(); SyncSettingsWindow(); };
             menu.Items.Add(new ToolStripMenuItem("DLB Precision Monitor") { Enabled = false });
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(showItem);
@@ -69,7 +74,7 @@ namespace DlbPrecision.Monitor
             menu.Items.Add(new ToolStripMenuItem("Exit", null, (sender, args) => { closing = true; Close(); }));
             menu.Opening += (sender, args) => RefreshMenu();
             ContextMenuStrip = menu;
-            tray = new NotifyIcon { Icon = Icon, Text = "DLB Precision Monitor", ContextMenuStrip = menu, Visible = true };
+            tray = new NotifyIcon { Icon = trayIcon, Text = "DLB Precision Monitor", ContextMenuStrip = menu, Visible = true };
             tray.DoubleClick += (sender, args) => ToggleVisible();
             timer.Tick += async (sender, args) => await PollAsync();
             saveTimer.Tick += (sender, args) => { saveTimer.Stop(); Save(); };
@@ -77,7 +82,6 @@ namespace DlbPrecision.Monitor
             {
                 ready = true;
                 ApplyWindowOptions();
-                if (firstRun) { settings.Width = (int)(861 * DpiScale); settings.Height = (int)(128 * DpiScale); }
                 RestoreSavedBounds();
                 hotkeyRegistered = NativeMethods.RegisterHotKey(Handle, hotkeyId, settings.HotkeyModifiers | NativeMethods.ModNoRepeat, (uint)settings.HotkeyKey);
                 if (!hotkeyRegistered)
@@ -104,6 +108,12 @@ namespace DlbPrecision.Monitor
         private float DpiScale => DeviceDpi / 96f;
         private Size WidgetMinimum => WidgetSizing.MinimumSize(settings.Vertical, DpiScale);
 
+        // A monitoring widget must never pull focus from a game, including when the shortcut shows it.
+        protected override bool ShowWithoutActivation => true;
+
+        // Primary first, so a first launch or a widget whose display was removed lands on the main display.
+        private static Rectangle[] WorkingAreas() => Screen.AllScreens.OrderByDescending(s => s.Primary).Select(s => s.WorkingArea).ToArray();
+
         protected override CreateParams CreateParams
         {
             get
@@ -115,20 +125,38 @@ namespace DlbPrecision.Monitor
             }
         }
 
+        // Creating the window at its saved place avoids a flash at the main display's top-left and
+        // gives it that display's DPI from the start, so Windows never rescales it on the way there.
+        private void PlaceBeforeFirstShow()
+        {
+            Rectangle[] areas = WorkingAreas();
+            var saved = new Rectangle(settings.Left, settings.Top, settings.Width, settings.Height);
+            Rectangle target = WindowPlacement.Fit(saved, areas, WidgetMinimum);
+            float scale = NativeMethods.DpiScaleFor(target) ?? DpiScale;
+            if (firstRun)
+            {
+                saved.Size = WidgetSizing.GetSize(settings.Vertical, 100, scale);
+                settings.Width = saved.Width; settings.Height = saved.Height;
+            }
+            MinimumSize = WidgetSizing.MinimumSize(settings.Vertical, scale);
+            Bounds = WindowPlacement.Fit(saved, areas, MinimumSize);
+        }
+
         private void RestoreSavedBounds()
         {
             restoring = true;
             try
             {
                 MinimumSize = WidgetMinimum;
-                Bounds = WindowPlacement.Fit(new Rectangle(settings.Left, settings.Top, settings.Width, settings.Height), Screen.AllScreens.Select(s => s.WorkingArea).ToArray(), MinimumSize);
+                Bounds = WindowPlacement.Fit(new Rectangle(settings.Left, settings.Top, settings.Width, settings.Height), WorkingAreas(), MinimumSize);
             }
             finally { restoring = false; }
         }
 
         private void ApplyWindowOptions()
         {
-            TopMost = settings.AlwaysOnTop;
+            // The TopMost setter repositions the window without SWP_NOACTIVATE, which can take focus.
+            if (TopMost != settings.AlwaysOnTop) TopMost = settings.AlwaysOnTop;
             Opacity = settings.OpacityPercent / 100.0;
             timer.Interval = settings.RefreshMilliseconds;
             Cursor = settings.PositionLocked ? Cursors.Default : Cursors.SizeAll;
@@ -151,7 +179,7 @@ namespace DlbPrecision.Monitor
             restoring = true;
             try
             {
-                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, vertical, null, DpiScale, Screen.AllScreens.Select(s => s.WorkingArea).ToArray());
+                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, vertical, null, DpiScale, WorkingAreas());
                 settings.Vertical = vertical;
                 MinimumSize = WidgetMinimum;
                 Bounds = nextBounds;
@@ -167,7 +195,7 @@ namespace DlbPrecision.Monitor
             polling = true;
             try
             {
-                SensorSnapshot received = await client.ReadAsync(settings.RefreshMilliseconds, cancellation.Token);
+                SensorSnapshot received = await client.ReadAsync(cancellation.Token);
                 if (closing || IsDisposed) return;
                 snapshot = received;
                 WidgetRenderer.Reading[] values = WidgetRenderer.Readings(snapshot, settings);
@@ -206,6 +234,12 @@ namespace DlbPrecision.Monitor
             return text;
         }
 
+        private void SyncSettingsWindow()
+        {
+            if (settingsForm == null || settingsForm.IsDisposed) return;
+            settingsForm.SyncWidgetState(settings.Vertical, settings.PositionLocked, WidgetSizing.GetPercent(settings.Vertical, Size, DpiScale));
+        }
+
         private void OpenSettings()
         {
             if (settingsForm != null && !settingsForm.IsDisposed) { settingsForm.Activate(); return; }
@@ -216,22 +250,32 @@ namespace DlbPrecision.Monitor
             settingsForm.Show();
         }
 
-        private string ApplySettings(MonitorSettings next, bool enableStartup, int? requestedSizePercent)
+        private SettingsApplyResult ApplySettings(MonitorSettings next, bool enableStartup, int? requestedSizePercent)
         {
             next.Normalize();
-            bool hotkeyChanged = !hotkeyRegistered || settings.HotkeyKey != next.HotkeyKey || settings.HotkeyModifiers != next.HotkeyModifiers;
+            bool hotkeyRequested = settings.HotkeyKey != next.HotkeyKey || settings.HotkeyModifiers != next.HotkeyModifiers;
+            bool hotkeyNeeded = hotkeyRequested || !hotkeyRegistered;
             int nextHotkeyId = hotkeyId == 101 ? 102 : 101;
-            if (hotkeyChanged && !NativeMethods.RegisterHotKey(Handle, nextHotkeyId, next.HotkeyModifiers | NativeMethods.ModNoRepeat, (uint)next.HotkeyKey))
-                return "That shortcut is already in use. Choose another key combination.";
+            bool hotkeyAcquired = hotkeyNeeded
+                && NativeMethods.RegisterHotKey(Handle, nextHotkeyId, next.HotkeyModifiers | NativeMethods.ModNoRepeat, (uint)next.HotkeyKey);
+            string hotkeyWarning = "";
+            if (hotkeyNeeded && !hotkeyAcquired)
+            {
+                // Another application owns the shortcut. Save everything else and keep the current shortcut.
+                next.HotkeyModifiers = settings.HotkeyModifiers; next.HotkeyKey = settings.HotkeyKey;
+                hotkeyWarning = hotkeyRequested && hotkeyRegistered
+                    ? "Saved, but that shortcut is in use by another app. Your previous shortcut still works."
+                    : "Saved, but the show / hide shortcut is in use by another app. Choose another key combination.";
+            }
 
             try
             {
                 if (StartupRegistration.IsEnabled() != enableStartup) StartupRegistration.SetEnabled(enableStartup);
-                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, next.Vertical, requestedSizePercent, DpiScale, Screen.AllScreens.Select(s => s.WorkingArea).ToArray());
+                Rectangle nextBounds = WidgetSizing.Apply(Bounds, settings.Vertical, next.Vertical, requestedSizePercent, DpiScale, WorkingAreas());
                 // Save first so a filesystem error leaves the running configuration intact.
                 next.Left = nextBounds.Left; next.Top = nextBounds.Top; next.Width = nextBounds.Width; next.Height = nextBounds.Height;
                 SettingsStore.Save(next, SettingsStore.DefaultPath);
-                if (hotkeyChanged)
+                if (hotkeyAcquired)
                 {
                     if (hotkeyRegistered) NativeMethods.UnregisterHotKey(Handle, hotkeyId);
                     hotkeyId = nextHotkeyId; hotkeyRegistered = true;
@@ -245,21 +289,21 @@ namespace DlbPrecision.Monitor
                     ApplyWindowOptions();
                 }
                 finally { restoring = false; }
-                Save();
+                if (Bounds != nextBounds) Save();
                 settingsWarning = "";
-                return "";
+                return new SettingsApplyResult(true, hotkeyWarning);
             }
             catch (Exception ex) when (ex is IOException || ex is UnauthorizedAccessException || ex is System.Security.SecurityException)
             {
-                if (hotkeyChanged) NativeMethods.UnregisterHotKey(Handle, nextHotkeyId);
-                return "Could not save settings: " + ex.Message;
+                if (hotkeyAcquired) NativeMethods.UnregisterHotKey(Handle, nextHotkeyId);
+                return new SettingsApplyResult(false, "Could not save settings: " + ex.Message);
             }
         }
 
         private async void ToggleVisible()
         {
             if (Visible) { Hide(); timer.Stop(); }
-            else { Show(); RestoreVisibleBounds(); timer.Start(); await PollAsync(); }
+            else { Show(); RestoreVisibleBounds(); BringToTopWithoutFocus(); timer.Start(); await PollAsync(); }
             RefreshMenu();
         }
 
@@ -270,12 +314,21 @@ namespace DlbPrecision.Monitor
             Bounds = WindowPlacement.Fit(new Rectangle(area.Left + 24, area.Top + 24, Width, Height), new[] { area }, MinimumSize);
             timer.Start();
             Save();
-            Activate();
         }
+
+        // Opening the app again shows the widget where the user put it; only the menu moves it.
+        private void RevealInPlace()
+        {
+            RestoreVisibleBounds();
+            BringToTopWithoutFocus();
+        }
+
+        private void BringToTopWithoutFocus() =>
+            NativeMethods.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, NativeMethods.SwpNoSize | NativeMethods.SwpNoMove | NativeMethods.SwpNoActivate);
 
         private void RestoreVisibleBounds()
         {
-            Bounds = WindowPlacement.Fit(Bounds, Screen.AllScreens.Select(s => s.WorkingArea).ToArray(), MinimumSize);
+            Bounds = WindowPlacement.Fit(Bounds, WorkingAreas(), MinimumSize);
         }
 
         private void UpdateBoundsSettings() { settings.Left = Left; settings.Top = Top; settings.Width = Width; settings.Height = Height; }
@@ -301,8 +354,11 @@ namespace DlbPrecision.Monitor
         {
             // Keep the full client area and DLB's borderless appearance with native resizing enabled.
             if (message.Msg == NativeMethods.WmNcCalcSize) { message.Result = IntPtr.Zero; return; }
+            // On a focus change Windows repaints the hidden resize frame over the widget's edges until
+            // the next refresh; -1 asks DefWindowProc to track the state change without that repaint.
+            if (message.Msg == NativeMethods.WmNcActivate) message.LParam = new IntPtr(-1);
             if (message.Msg == NativeMethods.WmHotkey && message.WParam.ToInt32() == hotkeyId) { ToggleVisible(); return; }
-            if (message.Msg == ActivateMessage) { if (!Visible) ToggleVisible(); else RecoverPosition(); return; }
+            if (message.Msg == ActivateMessage) { if (!Visible) ToggleVisible(); else RevealInPlace(); return; }
             if (message.Msg == NativeMethods.WmDisplayChange && ready) BeginInvoke(new Action(RestoreVisibleBounds));
             if (message.Msg == NativeMethods.WmNcHitTest)
             {
@@ -346,7 +402,7 @@ namespace DlbPrecision.Monitor
                 settingsForm?.Dispose(); settingsForm = null;
                 tray.Dispose(); menu.Dispose(); tooltip.Dispose(); cancellation.Dispose();
                 try { base.Dispose(disposing); }
-                finally { brandIcon.Dispose(); }
+                finally { brandIcon.Dispose(); trayIcon.Dispose(); }
             }
             else base.Dispose(disposing);
         }

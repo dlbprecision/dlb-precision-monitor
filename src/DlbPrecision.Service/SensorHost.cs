@@ -26,7 +26,7 @@ namespace DlbPrecision.Service
         private string? driverWarning;
         private string readerFailure = "Sensor initialization failed.";
         private byte[]? cache;
-        private long lastSample = -1000;
+        private long lastSampleStarted;
         private bool disposed;
 
         public void Start()
@@ -103,7 +103,8 @@ namespace DlbPrecision.Service
             lock (sampling)
             {
                 if (stop.IsCancellationRequested) return SnapshotCodec.Encode(SensorSnapshot.Unavailable("Sensor service is stopping."));
-                if (cache != null && cacheClock.ElapsedMilliseconds - lastSample < 1000) return cache;
+                long requested = cacheClock.ElapsedMilliseconds;
+                if (cache != null && SamplePolicy.CanReuse(requested, lastSampleStarted)) return cache;
                 SensorSnapshot snapshot;
                 try
                 {
@@ -127,19 +128,16 @@ namespace DlbPrecision.Service
                     readerFailure = "Sensor update failed (" + e.GetType().Name + ").";
                     snapshot = SensorSnapshot.Unavailable(readerFailure);
                 }
-                bool cpuReady = recovery.Observe(snapshot, cacheClock.ElapsedMilliseconds);
-                if (cpuReady) driverWarning = null;
-                else
-                {
-                    if (driverWarning != null) snapshot.Warnings.Add(driverWarning);
-                    if (recovery.Pending)
-                        snapshot.Warnings.Add("DLB will retry sensor initialization automatically while the monitor is open.");
-                    else if (recovery.Exhausted)
-                        snapshot.Warnings.Add("Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");
-                }
+                recovery.Observe(snapshot, cacheClock.ElapsedMilliseconds);
+                if (SensorRecovery.CpuReady(snapshot)) driverWarning = null;
+                else if (driverWarning != null) snapshot.Warnings.Add(driverWarning);
+                if (recovery.Pending)
+                    snapshot.Warnings.Add("DLB will retry sensor initialization automatically while the monitor is open.");
+                else if (recovery.Exhausted)
+                    snapshot.Warnings.Add("Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");
                 snapshot.TimestampUtc = DateTime.UtcNow;
                 cache = SnapshotCodec.Encode(snapshot);
-                lastSample = cacheClock.ElapsedMilliseconds;
+                lastSampleStarted = requested;
                 return cache;
             }
         }
