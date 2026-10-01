@@ -280,6 +280,40 @@ namespace DlbPrecision.Monitor
                     "Locking or changing layout from the widget menu while Settings is open is not undone by Apply");
                 ((Button)syncForm.Controls["CloseSettings"]).PerformClick();
             }
+            using (var updateForm = new SettingsForm(new MonitorSettings(), null, "Update button regression; nothing is launched."))
+            {
+                updateForm.ShowInTaskbar = false;
+                updateForm.StartPosition = FormStartPosition.Manual;
+                updateForm.Location = new Point(-32000, -32000);
+                updateForm.Opacity = 0;
+                updateForm.Show();
+                int checks = 0;
+                updateForm.CheckForUpdates = () => checks++;
+                verify(updateForm.Controls.Find("VersionText", true).Single().Text == "Version " + AppVersion.Display,
+                    "Settings shows the installed version");
+                ((Button)updateForm.Controls.Find("CheckForUpdates", true).Single()).PerformClick();
+                verify(checks == 1, "Check for updates in Settings asks the widget to start the updater once");
+                ((Button)updateForm.Controls["CloseSettings"]).PerformClick();
+            }
+            string updaterFolder = Path.Combine(Path.GetTempPath(), "DlbPrecisionUpdaterLaunch-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(updaterFolder);
+            try
+            {
+                var launches = new List<System.Diagnostics.ProcessStartInfo>();
+                verify(UpdateLauncher.Start(updaterFolder, launches.Add) != null && launches.Count == 0,
+                    "A missing updater is reported instead of failing silently");
+                File.WriteAllText(Path.Combine(updaterFolder, UpdateLauncher.UpdaterExecutable), "placeholder; never started");
+                verify(UpdateLauncher.Start(updaterFolder, launches.Add) == null && launches.Count == 1
+                    && launches[0].FileName == Path.Combine(updaterFolder, UpdateLauncher.UpdaterExecutable) && !launches[0].UseShellExecute,
+                    "Check for updates starts exactly one updater from the install folder, without network code in the widget");
+                verify(UpdateLauncher.Start(updaterFolder, info => throw new System.ComponentModel.Win32Exception(5)) != null,
+                    "An updater that cannot start is reported");
+            }
+            finally
+            {
+                foreach (string path in Directory.GetFiles(updaterFolder)) File.Delete(path);
+                Directory.Delete(updaterFolder);
+            }
             SensorSnapshot sample = SampleSnapshot();
             sample.Gpus.Add(new GpuSnapshot { Id = "second", Name = "Second GPU", LoadPercent = 73 });
             verify(WidgetRenderer.SelectGpu(sample, "second")?.LoadPercent == 73, "GPU selection chooses the requested hardware");
