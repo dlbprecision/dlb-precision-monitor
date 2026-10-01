@@ -5,10 +5,40 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
-## September 30 review fixes (unreleased)
+## September 30 v0.1.7 review fixes
 
-Code-review fixes on branch `fix/widget-review-fixes`. No installer was built or
-installed; the office PC kept running the installed v0.1.6 widget and service.
+Code-review fixes, first merged from branch `fix/widget-review-fixes`, then
+built, signed and upgrade-tested on the office PC as v0.1.7.
+
+- **Signed release.** The publisher-signed installer is **7.09 MiB**, SHA256
+  `ef0f4eff560a28b7274e7c91f30fa9b9721dbdbcf0ce9267ea83b140696f504e`
+  (`release-0.1.7-signed-attempt-2`). Setup, its embedded uninstaller and the
+  four DLB binaries (version **0.1.7.0**) carry valid, timestamped **DLB
+  Precision, LLC** signatures, and the checksum sidecar matches.
+- **Upgrade.** The first signed build upgraded the office PC from v0.1.6 with
+  exit code **0** and no restart: the settings-file hash and Windows startup
+  entry were unchanged, the running PawnIO driver and its demand-start
+  configuration were preserved, and the service returned to Running. The
+  corrected second build then installed over it with exit code **0**; the
+  installed widget's hash matched the signed stage.
+- **Focus finding in the first build.** Its widget still took focus when shown,
+  because WinForms applies the `TopMost` property with a window move that
+  activates the window, which overrides `ShowWithoutActivation`. A two-window
+  test reproduced it (first show, re-show and stay-on-top toggle all took focus)
+  and showed that the `WS_EX_TOPMOST` creation style with a non-activating
+  `SetWindowPos` toggle does not. The first build was not published. With the
+  corrected build installed, the widget stayed on top and never took focus at
+  launch, when hidden and shown through its shortcut message, or when the app
+  was opened again; it remained at its saved 682×101 position on the portrait
+  display.
+- **Installed checks.** **51** client/startup/integration assertions with live
+  service readings, **15** sensor-selection and **47** installed-widget checks
+  passed. On the installed service, **18 of 18** polls from a 1-second WinForms
+  timer received new readings. Warmed-up service CPU with 1-second polling was
+  **1.25–1.64%** of one logical processor (under **0.06%** of all 32), private
+  memory about **48 MB**; the widget used about **0.36%** and **31 MB**. The
+  first window after the installer restarted the service measured **2.5%**,
+  which includes one-time sensor initialization.
 
 - **Refresh timing.** A fresh sensor sample took about **51 ms** and the widget's
   1-second WinForms timer fired every **992–1005 ms**. The service started its
@@ -41,8 +71,8 @@ installed; the office PC kept running the installed v0.1.6 widget and service.
   **47** widget checks (7 new). All builds completed without warnings or errors.
 
 Not yet verified: mixed-DPI startup (the office PC's displays are all at 100%),
-GPU recovery after a real graphics-driver update, in-game shortcut behavior,
-and refresh/CPU measurements with an installed build of these changes.
+GPU recovery after a real graphics-driver update, the shortcut while a game is
+in focus, reboot/startup with v0.1.7, and clean-PC installation.
 
 ## September 22 v0.1.6 CPU sensor startup recovery
 
