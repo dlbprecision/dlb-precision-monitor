@@ -75,13 +75,18 @@ namespace DlbPrecision.Updater
                 return UpdateDecision.NotAvailable();
             if (!AllowedDownload(installer.DownloadUrl, allowFileUrls) || !AllowedDownload(checksum.DownloadUrl, allowFileUrls))
                 return UpdateDecision.NotAvailable();
-            if (requiredDownloadPrefix != null && (!installer.DownloadUrl.StartsWith(requiredDownloadPrefix, StringComparison.Ordinal)
-                || !checksum.DownloadUrl.StartsWith(requiredDownloadPrefix, StringComparison.Ordinal)))
+            if (requiredDownloadPrefix != null && (!ExpectedDownload(installer, requiredDownloadPrefix, versionText)
+                || !ExpectedDownload(checksum, requiredDownloadPrefix, versionText)))
                 return UpdateDecision.NotAvailable();
 
             string title = release.Name.Length > 0 ? release.Name : "DLB Precision Monitor " + versionText;
             return UpdateDecision.Available(new UpdateOffer(version, title, PlainText.FromMarkdown(release.Body), installer, checksum));
         }
+
+        // Compared after parsing, as the downloader will use it, so "../" segments cannot leave DLB's releases.
+        private static bool ExpectedDownload(ReleaseAsset asset, string prefix, string versionText) =>
+            Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? uri)
+            && string.Equals(uri.AbsoluteUri, prefix + "v" + versionText + "/" + asset.Name, StringComparison.Ordinal);
 
         private static bool AllowedDownload(string url, bool allowFileUrls) =>
             Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || (allowFileUrls && uri.IsFile && !uri.IsUnc));

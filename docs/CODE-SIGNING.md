@@ -159,6 +159,10 @@ updater's private folder under the user's `%TEMP%`, the same exposure as running
 setup from the Downloads folder: software already running as that user could
 interfere with it there, which a publisher signature cannot prevent.
 
+Every future updater must keep accepting `--cleanup <folder> <pid>`: after an
+update, the previous version's temporary copy asks the newly installed updater
+to remove its folder with exactly those arguments.
+
 If DLB's validated publisher name or signing service ever changes, installed
 copies will refuse releases signed the new way. Publish such a release with
 instructions for a one-time manual install, after which in-app updates resume.
