@@ -64,12 +64,10 @@ namespace DlbPrecision.Updater
                 return key?.GetValue("DLBPrecisionMonitor") is string;
         }
 
-        public static bool DesktopShortcutExists()
-        {
-            const string shortcut = "DLB Precision Monitor.lnk";
-            return File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), shortcut))
-                || File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), shortcut));
-        }
+        // Setup installs for all users, so its shortcut lives on the shared Public desktop. A person's own
+        // copy on their desktop is theirs to manage and says nothing about setup's shortcut.
+        public static bool DesktopShortcutExists() =>
+            File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonDesktopDirectory), "DLB Precision Monitor.lnk"));
 
         // Inno Setup does not document the code for a declined Windows prompt, so the outcome is also
         // judged by what changed: a declined or never-started update leaves the version and widget alone.
