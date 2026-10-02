@@ -85,6 +85,27 @@ internal static class UpdaterTests
             asset.DownloadUrl = ReleaseFeed.DownloadPrefix + "../../../../attacker/repo/releases/download/v0.1.9/" + asset.Name;
         check(UpdateOffer.Decide(traversal, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
             "A download address that climbs out of DLB's releases with ../ is refused.");
+        ReleaseInfo recased = Release("v0.1.9");
+        foreach (ReleaseAsset asset in recased.Assets)
+            asset.DownloadUrl = asset.DownloadUrl.Replace("dlbprecision/dlb-precision-monitor", "DLBPrecision/DLB-Precision-Monitor");
+        check(UpdateOffer.Decide(recased, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.Available,
+            "GitHub owner and repository names ignore case, so a re-cased account name still offers updates.");
+        ReleaseInfo wrongTagCase = Release("v0.1.9");
+        foreach (ReleaseAsset asset in wrongTagCase.Assets) asset.DownloadUrl = asset.DownloadUrl.Replace("/v0.1.9/", "/V0.1.9/");
+        ReleaseInfo wrongAssetCase = Release("v0.1.9");
+        foreach (ReleaseAsset asset in wrongAssetCase.Assets) asset.DownloadUrl = asset.DownloadUrl.Replace("DLB-Precision-Monitor-0.1.9", "dlb-precision-monitor-0.1.9");
+        check(UpdateOffer.Decide(wrongTagCase, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable
+            && UpdateOffer.Decide(wrongAssetCase, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
+            "The release tag and file name in a download address must match exactly.");
+        ReleaseInfo otherRepo = Release("v0.1.9");
+        foreach (ReleaseAsset asset in otherRepo.Assets) asset.DownloadUrl = asset.DownloadUrl.Replace("dlb-precision-monitor/releases", "dlb-precision-monitor2/releases");
+        check(UpdateOffer.Decide(otherRepo, installed, false, false, ReleaseFeed.DownloadPrefix).Status == OfferStatus.NotAvailable,
+            "A repository whose name only starts like DLB's is refused.");
+        ReleaseInfo titled = Release("v0.1.9");
+        titled.Name = "DLB Precision Monitor v0.1.9";
+        titled.Body = "# DLB Precision Monitor v0.1.9\n\nFixes the updater.";
+        check(UpdateOffer.Decide(titled, installed, false, false).Offer?.Notes == "Fixes the updater.",
+            "Notes that repeat the release title as a heading do not show the title twice.");
         check(UpdateOffer.Decide(Release("v\u0660.\u0661.\u0669"), installed, false, false).Status == OfferStatus.NotAvailable,
             "Tags with non-ASCII digits are refused instead of crashing.");
         ReleaseInfo unc = Release("v0.1.9", scheme: "file");
@@ -107,9 +128,25 @@ internal static class UpdaterTests
         try { ReleaseFeed.Parse(Encoding.UTF8.GetBytes("not json")); } catch (InvalidDataException) { rejected = true; }
         check(rejected, "A malformed release description is rejected.");
 
-        check(ReleaseFeed.FromHttpStatus(404).Status == FeedStatus.NoRelease, "HTTP 404 means there is no Latest release.");
-        check(ReleaseFeed.FromHttpStatus(403).Status == FeedStatus.RateLimited && ReleaseFeed.FromHttpStatus(429).Status == FeedStatus.RateLimited,
-            "GitHub rate limiting is reported as try again later.");
+        FeedResult missing = ReleaseFeed.FromHttpStatus(404);
+        check(missing.Status == FeedStatus.NoRelease && missing.Message.Contains("404"),
+            "HTTP 404 means DLB's release information could not be found, and says so.");
+        var now = new DateTime(2026, 10, 1, 18, 0, 0, DateTimeKind.Utc);
+        long reset = (long)(now.AddMinutes(47) - new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc)).TotalSeconds;
+        FeedResult limited = ReleaseFeed.FromHttpStatus(403, remaining: "0", reset: reset.ToString(), nowUtc: now);
+        string resetText = now.AddMinutes(47).ToLocalTime().ToString("t");
+        check(limited.Status == FeedStatus.RateLimited && limited.Message.Contains("Try again after " + resetText),
+            "GitHub's hourly limit names the time it resets: " + limited.Message);
+        FeedResult retryAfter = ReleaseFeed.FromHttpStatus(429, retryAfter: "120", nowUtc: now);
+        check(retryAfter.Status == FeedStatus.RateLimited && retryAfter.Message.Contains("Try again after " + now.AddSeconds(120).ToLocalTime().ToString("t")),
+            "A Retry-After reply names when to try again.");
+        check(ReleaseFeed.FromHttpStatus(429, nowUtc: now).Message.Contains("hour"),
+            "A rate limit without a reset time does not promise a few minutes.");
+        FeedResult refused = ReleaseFeed.FromHttpStatus(403, remaining: "57", nowUtc: now);
+        check(refused.Status == FeedStatus.Refused && refused.Message.Contains("403") && !refused.Message.Contains("Too many"),
+            "A 403 that is not GitHub's rate limit, such as a blocking network, is not called rate limiting.");
+        check(ReleaseFeed.FromHttpStatus(403, reset: "garbage", remaining: "0", nowUtc: now).Status == FeedStatus.RateLimited,
+            "A malformed reset time still reports the rate limit.");
         check(ReleaseFeed.FromHttpStatus(502).Status == FeedStatus.ServerError, "Server errors are reported separately.");
         check(ReleaseFeed.FromHttpStatus(418).Status == FeedStatus.Invalid, "Unexpected HTTP replies are not treated as releases.");
 
@@ -159,6 +196,8 @@ internal static class UpdaterTests
     {
         SignerCommonName = "DLB Precision, LLC",
         SignerOrganization = "DLB Precision, LLC",
+        SignerState = "Arkansas",
+        SignerCountry = "US",
         ChainCommonNames = new List<string> { "DLB Precision, LLC", "Microsoft ID Verified CS EOC CA 04",
             "Microsoft ID Verified Code Signing PCA 2021", "Microsoft Identity Verification Root Certificate Authority 2020" },
         CodeSigning = true,
@@ -178,6 +217,12 @@ internal static class UpdaterTests
         check(PublisherPolicy.Evaluate(facts) != null, "The publisher name must match exactly.");
         facts = GoodFacts(); facts.SignerOrganization = "Someone Else";
         check(PublisherPolicy.Evaluate(facts) != null, "The organization must also be DLB Precision, LLC.");
+        facts = GoodFacts(); facts.SignerState = "Delaware";
+        check(PublisherPolicy.Evaluate(facts) != null, "A same-named company registered in another state is refused.");
+        facts = GoodFacts(); facts.SignerState = null;
+        check(PublisherPolicy.Evaluate(facts) != null, "A certificate without DLB's state is refused.");
+        facts = GoodFacts(); facts.SignerCountry = "GB";
+        check(PublisherPolicy.Evaluate(facts) != null, "A same-named company in another country is refused.");
         facts = GoodFacts(); facts.ChainCommonNames = new List<string> { "DLB Precision, LLC", "Some Other Root" };
         check(PublisherPolicy.Evaluate(facts) != null, "A certificate outside Microsoft's identity-verified chain is refused.");
         facts = GoodFacts(); facts.CodeSigning = false;
@@ -207,9 +252,18 @@ internal static class UpdaterTests
             "A declined Windows prompt, which changes nothing and never closes the widget, is reported as cancelled.");
         check(SetupRunner.Interpret(1, false, true) == SetupOutcome.Failed && SetupRunner.Interpret(4, true, true) == SetupOutcome.Failed,
             "Failures after setup started changing things are reported as failures.");
-        check(SetupRunner.Interpret(7, false, false) == SetupOutcome.Failed, "Setup refusing to proceed (exit 7) is a failure, not a cancel.");
+        check(SetupRunner.Interpret(7, false, false) == SetupOutcome.CannotProceed, "Setup refusing to proceed (exit 7) has its own outcome, not a cancel.");
+        check(SetupRunner.Interpret(21, true, true) == SetupOutcome.UpdatedServiceNotRunning && SetupRunner.Interpret(21, false, true) == SetupOutcome.Failed,
+            "DLB's exit 21 reports a sensor service that did not start after the update.");
         foreach (SetupOutcome outcome in Enum.GetValues(typeof(SetupOutcome)))
-            check(SetupRunner.Message(outcome, 7).Length > 0, "Every setup outcome has a message: " + outcome);
+            check(SetupRunner.Message(new SetupResult(outcome, 7, null)).Length > 0, "Every setup outcome has a message: " + outcome);
+        check(!SetupRunner.Message(new SetupResult(SetupOutcome.CannotProceed, 7, null)).Contains("reopened")
+            && !SetupRunner.Message(new SetupResult(SetupOutcome.Failed, 4, null)).Contains("reopened")
+            && SetupRunner.Message(new SetupResult(SetupOutcome.Failed, 4, null, reopened: true)).Contains("reopened"),
+            "A result says the monitor was reopened only when the updater reopened it.");
+        check(!SetupRunner.Message(new SetupResult(SetupOutcome.Failed, 4, null)).Contains("Show details")
+            && SetupRunner.Message(new SetupResult(SetupOutcome.Failed, 4, @"C:\x\update-setup.log")).Contains("Show details"),
+            "A result mentions Show details only when the setup log was kept.");
 
         check(SetupRunner.Interpret(2, false, true) == SetupOutcome.Failed && SetupRunner.Interpret(5, true, true) == SetupOutcome.Failed,
             "A cancel code after setup had changed things is a failure.");
@@ -236,6 +290,13 @@ internal static class UpdaterTests
             && text.Contains("• Bold item") && text.Contains("• the link and code") && text.Contains("Last line") && !text.Contains("\r\n\r\n\r\n"),
             "Release notes are shown as readable plain text.");
         check(PlainText.FromMarkdown(null) == "", "Missing release notes show nothing.");
+        string wrapped = PlainText.FromMarkdown("This release fixes the updater\nwindow at high display scaling.\n\n- First fix that wraps\n  onto a second line\n- Second fix\n\n1. Step one\n2. Step two\n\n## Heading\nText under it");
+        check(wrapped == "This release fixes the updater window at high display scaling.\r\n\r\n• First fix that wraps onto a second line\r\n• Second fix"
+            + "\r\n\r\n1. Step one\r\n2. Step two\r\n\r\nHeading\r\nText under it",
+            "Hard-wrapped Markdown lines are joined into paragraphs, keeping list items and headings on their own lines: " + wrapped.Replace("\r\n", "|"));
+        check(PlainText.FromMarkdown("# DLB Precision Monitor v0.1.9\n\nFixes", title: "DLB Precision Monitor v0.1.9") == "Fixes"
+            && PlainText.FromMarkdown("# Other heading\n\nFixes", title: "DLB Precision Monitor v0.1.9") == "Other heading\r\n\r\nFixes",
+            "A leading heading that repeats the release title is dropped; other headings stay.");
         string longText = PlainText.FromMarkdown(new string('x', 10000), 100);
         check(longText.Length <= 100 && longText.EndsWith("…"), "Very long release notes are shortened.");
         var notesTimer = Stopwatch.StartNew();
@@ -309,18 +370,53 @@ internal static class UpdaterTests
                     "A validly signed program from another publisher is refused for that reason: " + wrongPublisher.Reason);
             }
 
-            string installed = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "DLB Precision Monitor", "DlbPrecision.Monitor.exe");
+            string named = Path.Combine(folder, "DLB-Precision-Monitor-0.1.9-Setup.exe");
+            File.Copy(unsigned, named);
+            VerificationResult noChecksum = PackageVerifier.VerifyPackage(named, "0.1.9");
+            check(!noChecksum.Ok && noChecksum.Reason.IndexOf("checksum", StringComparison.OrdinalIgnoreCase) >= 0,
+                "The release check refuses a setup without its checksum file.");
+            File.WriteAllText(named + ".sha256", Sha256(named) + "  DLB-Precision-Monitor-0.1.9-Setup.exe\n");
+            VerificationResult unsignedPackage = PackageVerifier.VerifyPackage(named, "0.1.9");
+            check(!unsignedPackage.Ok && unsignedPackage.Reason.IndexOf("signature", StringComparison.OrdinalIgnoreCase) >= 0,
+                "The release check runs the same signature rules as the updater: " + unsignedPackage.Reason);
+            VerificationResult wrongName = PackageVerifier.VerifyPackage(named, "0.1.10");
+            check(!wrongName.Ok && wrongName.Reason.Contains("DLB-Precision-Monitor-0.1.10-Setup.exe"),
+                "The release check refuses a setup whose file name does not match the release version.");
+
+            string installedFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "DLB Precision Monitor");
+            string installed = Path.Combine(installedFolder, "DlbPrecision.Monitor.exe");
             if (integration && File.Exists(installed))
             {
                 string version = FileVersionInfo.GetVersionInfo(installed).ProductVersion?.Trim() ?? "";
-                VerificationResult genuine = VerifyCopy(installed, version);
-                check(genuine.Ok, "An installed DLB Precision, LLC program passes verification: " + genuine.Reason);
-                check(!VerifyCopy(installed, "9.9.9").Ok, "A genuine DLB program with the wrong version is refused.");
+                VerificationResult notSetup = VerifyCopy(installed, version);
+                check(!notSetup.Ok && notSetup.Reason.Contains("not the DLB Precision Monitor setup"),
+                    "A genuine DLB program that is not the setup is refused: " + notSetup.Reason);
+                string uninstaller = Path.Combine(installedFolder, "unins000.exe");
+                if (File.Exists(uninstaller))
+                {
+                    VerificationResult uninstall = VerifyCopy(uninstaller, FileVersionInfo.GetVersionInfo(uninstaller).ProductVersion?.Trim() ?? "");
+                    check(!uninstall.Ok && uninstall.Reason.Contains("not the DLB Precision Monitor setup"),
+                        "DLB's signed uninstaller, renamed as a setup, is refused: " + uninstall.Reason);
+                }
                 string tampered = Path.Combine(folder, "tampered.exe");
                 byte[] bytes = File.ReadAllBytes(installed);
                 bytes[bytes.Length / 2] ^= 0x5A;
                 File.WriteAllBytes(tampered, bytes);
                 check(!VerifyCopy(tampered, version).Ok, "A byte-tampered DLB program is refused.");
+            }
+            // A signed release setup to accept, for example artifacts\release-0.1.8-signed-attempt-2\DLB-Precision-Monitor-0.1.8-Setup.exe.
+            string? signedSetup = Environment.GetEnvironmentVariable("DLB_SIGNED_SETUP");
+            if (integration && !string.IsNullOrEmpty(signedSetup) && File.Exists(signedSetup))
+            {
+                string setupVersion = FileVersionInfo.GetVersionInfo(signedSetup).ProductVersion?.Trim() ?? "";
+                VerificationResult genuine = VerifyCopy(signedSetup!, setupVersion);
+                check(genuine.Ok, "A genuine signed DLB Precision Monitor setup passes verification: " + genuine.Reason);
+                check(!VerifyCopy(signedSetup!, "9.9.9").Ok, "A genuine DLB setup with the wrong version is refused.");
+                if (File.Exists(signedSetup + ".sha256"))
+                {
+                    VerificationResult package = PackageVerifier.VerifyPackage(signedSetup!, setupVersion);
+                    check(package.Ok, "The release check accepts the genuine setup and its checksum file: " + package.Reason);
+                }
             }
         }
         finally { Directory.Delete(folder, true); }
@@ -333,8 +429,10 @@ internal static class UpdaterTests
         try
         {
             string kept = Path.Combine(folder, "kept", "update-setup.log");
+            int setupStarts = 0;
             SetupResult Simulate(int exitCode, bool installs, bool closesWidget, bool reopensWidget, bool writesLog, List<string> reopened,
-                Exception? startError = null)
+                Exception? startError = null, string logText = "fake setup log", bool serviceRunning = true, bool startupRegistered = false,
+                int otherSessions = 0)
             {
                 string version = "0.1.7.9";
                 var widgets = new List<int> { 41 };
@@ -343,11 +441,15 @@ internal static class UpdaterTests
                     InstalledVersion = path => version,
                     RunningWidgets = () => widgets.ToArray(),
                     IsRunning = id => widgets.Contains(id),
-                    Reopen = path => reopened.Add(path),
+                    Reopen = path => { reopened.Add(path); return true; },
+                    OtherSessionWidgets = () => otherSessions,
+                    ServiceRunning = () => serviceRunning,
+                    StartupRegistered = path => startupRegistered,
                     StartAndWait = (setup, arguments, working) =>
                     {
+                        setupStarts++;
                         if (startError != null) throw startError;
-                        if (writesLog) File.WriteAllText(Path.Combine(working, "setup.log"), "fake setup log");
+                        if (writesLog) File.WriteAllText(Path.Combine(working, "setup.log"), logText);
                         if (closesWidget) widgets.Remove(41);
                         if (installs) version = "0.1.8.0";
                         if (reopensWidget) widgets.Add(77);
@@ -366,31 +468,58 @@ internal static class UpdaterTests
             check(updated.Outcome == SetupOutcome.Updated && reopenedWidgets.Count == 0 && updated.KeptLog == null,
                 "A successful update relies on setup reopening the widget and keeps no log.");
             SetupResult failed = Simulate(4, false, true, false, true, reopenedWidgets);
-            check(failed.Outcome == SetupOutcome.Failed && reopenedWidgets.Count == 1 && failed.KeptLog == kept && File.Exists(kept),
-                "A failed update reopens the closed widget and keeps the setup log.");
+            check(failed.Outcome == SetupOutcome.Failed && reopenedWidgets.Count == 1 && failed.Reopened && failed.KeptLog == kept && File.Exists(kept)
+                && SetupRunner.Message(failed).Contains("reopened"),
+                "A failed update reopens the closed widget, says so and keeps the setup log.");
             reopenedWidgets.Clear();
             SetupResult earlyFailure = Simulate(1, false, false, false, true, reopenedWidgets);
             check(earlyFailure.Outcome == SetupOutcome.Cancelled && earlyFailure.KeptLog == kept,
                 "An update that stops before changing anything still keeps setup's log when it wrote one.");
             SetupResult silentFailure = Simulate(0, false, false, false, true, reopenedWidgets);
-            check(silentFailure.Outcome == SetupOutcome.Failed && silentFailure.KeptLog == kept,
+            check(silentFailure.Outcome == SetupOutcome.Failed && silentFailure.KeptLog == kept && !silentFailure.Reopened
+                && !SetupRunner.Message(silentFailure).Contains("reopened"),
                 "Setup reporting success without installing the new version is a failure with its log kept.");
+            reopenedWidgets.Clear();
+            const string refusal = "DLB Precision Sensors did not stop. Close the monitor and retry setup.";
+            SetupResult cannotProceed = Simulate(7, false, false, false, true, reopenedWidgets,
+                logText: "2026-10-01 12:00:00.000   Log opened.\r\n2026-10-01 12:00:01.000   PrepareToInstall failed: " + refusal + "\r\n2026-10-01 12:00:01.100   Need to restart Windows? No\r\n");
+            check(cannotProceed.Outcome == SetupOutcome.CannotProceed && cannotProceed.Detail == refusal && !cannotProceed.Reopened
+                && cannotProceed.KeptLog == kept && reopenedWidgets.Count == 0
+                && SetupRunner.Message(cannotProceed).Contains(refusal) && !SetupRunner.Message(cannotProceed).Contains("reopened"),
+                "Setup refusing to start shows setup's own reason and does not claim the monitor was reopened.");
+            SetupResult serviceDown = Simulate(0, true, true, true, true, reopenedWidgets, serviceRunning: false);
+            check(serviceDown.Outcome == SetupOutcome.UpdatedServiceNotRunning && serviceDown.KeptLog == kept
+                && SetupRunner.Message(serviceDown).Contains("Restart Windows"),
+                "An update whose sensor service is not running afterwards says to restart and keeps the log.");
+            check(Simulate(21, true, true, true, true, reopenedWidgets).Outcome == SetupOutcome.UpdatedServiceNotRunning,
+                "Setup's own sensor-service failure code is reported the same way.");
+            check(Simulate(20, true, true, true, true, reopenedWidgets, startupRegistered: true).Outcome == SetupOutcome.Updated
+                && Simulate(20, true, true, true, true, reopenedWidgets, startupRegistered: false).Outcome == SetupOutcome.UpdatedReenableStartup,
+                "Launch at sign-in is reported as off only when it really is off after the update.");
+            int startsBefore = setupStarts;
+            SetupResult otherUser = Simulate(0, true, true, true, true, reopenedWidgets, otherSessions: 1);
+            check(otherUser.Outcome == SetupOutcome.InUseByAnotherUser && setupStarts == startsBefore && otherUser.ExitCode == -1
+                && SetupRunner.Message(otherUser).Contains("another Windows user"),
+                "Setup is not started while another Windows user has the monitor open, and the person is told why.");
             SetupResult refused = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(1223));
             check(refused.Outcome == SetupOutcome.Cancelled, "Declining a prompt shown by Windows before setup starts is reported as cancelled.");
             SetupResult notStarted = Simulate(0, false, false, false, false, reopenedWidgets, new System.ComponentModel.Win32Exception(8));
-            check(notStarted.Outcome == SetupOutcome.CouldNotStart && SetupRunner.Message(notStarted.Outcome, notStarted.ExitCode).Contains("couldn't start")
+            check(notStarted.Outcome == SetupOutcome.CouldNotStart && SetupRunner.Message(notStarted).Contains("couldn't start")
                 && notStarted.ExitCode == -1, "A Windows error starting setup is not confused with setup's own exit codes.");
         }
         finally { Directory.Delete(folder, true); }
     }
 
-    private static VerificationResult VerifyCopy(string path, string expectedVersion, bool wrongHash = false)
+    private static string Sha256(string path)
     {
-        string hash;
         using (var sha = SHA256.Create())
         using (var stream = File.OpenRead(path))
-            hash = BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
-        if (wrongHash) hash = new string('0', 64);
+            return BitConverter.ToString(sha.ComputeHash(stream)).Replace("-", "").ToLowerInvariant();
+    }
+
+    private static VerificationResult VerifyCopy(string path, string expectedVersion, bool wrongHash = false)
+    {
+        string hash = wrongHash ? new string('0', 64) : Sha256(path);
         using (var locked = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read))
             return PackageVerifier.Verify(locked, path, hash, expectedVersion);
     }
