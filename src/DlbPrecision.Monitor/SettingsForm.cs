@@ -34,8 +34,10 @@ namespace DlbPrecision.Monitor
         private readonly TextBox shortcut = new TextBox { ReadOnly = true };
         private readonly Label validation = new Label();
         private readonly ToolTip diagnosticsTip = new ToolTip { AutoPopDelay = 30000 };
-        private readonly Font bodyFont = new Font("Segoe UI", 9f);
-        private readonly Font titleFont = new Font("Segoe UI Semibold", 17);
+        private readonly Font bodyFont = new Font("Segoe UI", BodyPoints);
+        private const float BodyPoints = 9f, TitlePoints = 17f;
+        private Font titleFont = new Font("Segoe UI Semibold", TitlePoints);
+        private readonly Label title;
         private bool ownedResourcesDisposed;
         private uint shortcutModifiers;
         private int shortcutKey;
@@ -67,7 +69,7 @@ namespace DlbPrecision.Monitor
             content.AutoScrollMinSize = new Size(0, 661);
             Controls.Add(content);
 
-            var title = new Label { Text = "Make it yours.", Font = titleFont, AutoSize = true, Location = new Point(24, 20) };
+            title = new Label { Name = "SettingsTitle", Text = "Make it yours.", Font = titleFont, AutoSize = true, Location = new Point(24, 20) };
             var intro = new Label { Text = "Right-click the widget or use its tray icon to return here.", AutoSize = true, ForeColor = Color.FromArgb(163, 158, 178), Location = new Point(26, 57) };
             content.Controls.Add(title); content.Controls.Add(intro);
 
@@ -225,6 +227,19 @@ namespace DlbPrecision.Monitor
             private string Name { get; }
             public GpuChoice(string id, string name) { Id = id; Name = name; }
             public override string ToString() => Name;
+        }
+
+        // WinForms rescales the window's own text when it moves to a display with different scaling; keep
+        // the heading in proportion to it so it never overlaps the line below.
+        protected override void OnDpiChanged(DpiChangedEventArgs args)
+        {
+            base.OnDpiChanged(args);
+            float points = Font.SizeInPoints * TitlePoints / BodyPoints;
+            if (Math.Abs(title.Font.SizeInPoints - points) < 0.01f) return;
+            Font previous = titleFont;
+            titleFont = new Font("Segoe UI Semibold", points);
+            title.Font = titleFont;
+            previous.Dispose();
         }
 
         protected override void OnLoad(EventArgs args)
