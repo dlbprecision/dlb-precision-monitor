@@ -380,6 +380,66 @@ internal static class Program
         }
         Check(altReopen >= 600_000 && altReopen <= 615_000, "CPU readings blank on every other sample are retried within seconds (" + altReopen / 1000 + " s).");
 
+        // Random one-sample dropouts (1 in 120 samples for a day, one sample a second) rarely reopen sensors.
+        recovery = new SensorRecovery();
+        var dropouts = new Random(1);
+        int dropoutReopens = 0;
+        for (long t = 0; t <= 86_400_000; t += 1000)
+        {
+            if (t > 0 && recovery.TryBeginRetry(t)) dropoutReopens++;
+            bool bad = dropouts.Next(120) == 0;
+            recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = bad ? (double?)null : 4000 }, t);
+        }
+        Check(dropoutReopens <= 5, "Random one-sample dropouts rarely reopen sensors (" + dropoutReopens + " reopens in a day).");
+
+        // Two separate one-sample dropouts a few seconds apart are still isolated dropouts: no reopen, no warning,
+        // and no firm retry for a later fault that clears by itself. At 1 and 2 seconds per sample.
+        foreach (long step in new[] { 1000L, 2000L })
+        {
+            for (int apart = 2; apart <= 6; apart++)
+            {
+                recovery = new SensorRecovery();
+                int pairReopens = 0;
+                bool pairWarned = false;
+                for (long t = 0; t <= 600_000; t += step)
+                {
+                    if (t > 0 && recovery.TryBeginRetry(t)) pairReopens++;
+                    long sample = t / step;
+                    bool bad = sample == 50 || sample == 50 + apart || (step == 1000 && (t == 120_000 || t == 121_000));
+                    recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = bad ? (double?)null : 4000, Gpus = ReportingGpu() }, t);
+                    if (recovery.Retrying && sample <= 50 + apart) pairWarned = true;
+                }
+                Check(pairReopens == 0 && !pairWarned, "Two single blank samples " + apart + " samples apart (" + step / 1000 + " s per sample) cause no reopen and no warning ("
+                    + pairReopens + " reopens).");
+            }
+        }
+
+        // Readings that were good when sampling paused (the widget hidden) and blank when it resumed start a new
+        // fault: older dropouts before the pause don't make a retry due at once.
+        recovery = new SensorRecovery();
+        var cpuBlank = new SensorSnapshot { CpuTemperatureC = 50, Gpus = ReportingGpu() };
+        var cpuGood = new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = 4000, Gpus = ReportingGpu() };
+        recovery.Observe(cpuGood, 99_000);
+        recovery.Observe(cpuBlank, 100_000);
+        recovery.Observe(cpuGood, 101_000);
+        recovery.Observe(cpuBlank, 102_000);
+        recovery.Observe(cpuGood, 103_000);
+        recovery.Observe(cpuBlank, 700_000);                                    // no samples from 104 s to 700 s
+        recovery.Observe(cpuGood, 701_000);
+        Check(!recovery.TryBeginRetry(702_000) && !recovery.Pending, "Dropouts before a pause in sampling and one after it are not one fault.");
+
+        // A card that blanked once before another sensor's slow reopen and is blank right after it gets a fresh
+        // wait, not a retry that fell due during the reopen.
+        recovery = new SensorRecovery();
+        SensorSnapshot Both(bool cpuBad, bool gpuBad) => new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = cpuBad ? (double?)null : 4000, Gpus = new List<GpuSnapshot> { gpuBad ? blank : live } };
+        for (long t = 80_000; t < 100_000; t += 1000) recovery.Observe(Both(t >= 90_000, t == 98_000), t);
+        Check(recovery.TryBeginRetry(100_000), "The CPU retry is due at 100 s.");
+        recovery.Observe(Both(false, true), 135_000);                           // that reopen took 35 seconds
+        bool earlyAgain = recovery.TryBeginRetry(136_000);
+        recovery.Observe(Both(false, true), 136_000);
+        Check(!earlyAgain && !recovery.TryBeginRetry(144_999) && recovery.TryBeginRetry(145_000),
+            "A card blank after another sensor's slow reopen waits its own 10 seconds instead of reopening again at once.");
+
         // A reopen whose sensor reader can't be built leaves nothing to read; recovery keeps going for the card
         // even when the CPU can't be read at all.
         recovery = new SensorRecovery();

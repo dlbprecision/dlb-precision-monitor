@@ -68,8 +68,8 @@ namespace DlbPrecision.Service
         // (unplugged or disabled).
         private static readonly long[] CpuDelays = { 10000, 30000, 60000 };
         private static readonly long[] GpuDelays = { 10000, 60000, 300000, 900000 };
-        // A fault counts only once it has two bad samples without readings settling in between, so an isolated
-        // dropout costs nothing.
+        // A fault counts once it has two bad samples in a row, or three with good readings between them that never
+        // settled, so isolated dropouts cost nothing while a reading that keeps flickering is still retried.
         // A brief good reading neither cancels a planned retry nor refills a budget. Readings must stay good for
         // SettleTime to cancel a retry, and for RefillTime before a new fault gets a fresh budget. A fault that
         // returns within RefillTime of such a natural recovery gets a firm retry that good readings no longer
@@ -172,18 +172,18 @@ namespace DlbPrecision.Service
             {
                 if (track.GoodSince < 0) track.GoodSince = milliseconds;
                 long goodFor = milliseconds - track.GoodSince;
-                // A fault is over once readings have settled, not at the first good sample, so a reading that is
-                // blank on every other sample still counts as one fault.
-                if (goodFor >= SettleTime) track.BadSamples = 0;
                 if (goodFor >= SettleTime && track.DueAt >= 0 && !track.Firm) { track.DueAt = -1; track.CancelledAt = milliseconds; }
                 if (goodFor >= RefillTime) { track.Retries = 0; track.DueAt = -1; track.Firm = false; }
                 return;
             }
+            // Readings that came back and stayed good for SettleTime, counting time nobody sampled, ended the fault.
+            bool afterGood = track.GoodSince >= 0;
+            if (afterGood && milliseconds - track.GoodSince >= SettleTime) track.BadSamples = 0;
             track.GoodSince = -1;
             // The first sample after a reopen comes once it has finished, however long that took.
             if (track.BadSamples++ == 0 || track.Reopened) track.BadSince = milliseconds;
             track.Reopened = false;
-            if (track.BadSamples < 2 || track.DueAt >= 0 || track.Retries == delays.Length) return;
+            if (track.BadSamples < (afterGood ? 3 : 2) || track.DueAt >= 0 || track.Retries == delays.Length) return;
             track.DueAt = track.BadSince + delays[track.Retries];
             track.Firm = milliseconds - track.CancelledAt < RefillTime;
         }
