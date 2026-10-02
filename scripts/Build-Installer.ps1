@@ -22,6 +22,8 @@ if ($TestBuild) {
 } elseif ($Version -notmatch '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,5}$') {
     throw "Release versions are MAJOR.MINOR.PATCH, which is all installed updaters accept. For a test build use -TestBuild with a four-part version."
 }
+# Reused outputs may contain changes that were never committed, and they would still record this commit.
+if ($Sign -and $SkipBuild -and -not $TestBuild) { throw 'Signed release builds always rebuild from the committed source; remove -SkipBuild.' }
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot 'installer\vendor\manifest.json') -Raw | ConvertFrom-Json
 $toolsRoot = Join-Path $repoRoot '.tools'
@@ -130,7 +132,8 @@ foreach ($project in $projects) {
         if ($binary.VersionInfo.FileVersion -ne $expectedFileVersion) {
             throw "Build output version mismatch for $($binary.Name): expected $expectedFileVersion, found $($binary.VersionInfo.FileVersion). Rebuild without -SkipBuild."
         }
-        # Also catches -SkipBuild reusing outputs built from other, possibly uncommitted, source.
+        # Catches outputs built at another commit. (Uncommitted changes since discarded would still carry this
+        # commit, which is why signed release builds refuse -SkipBuild.)
         if ($Sign -and -not ([string]$binary.VersionInfo.ProductVersion).EndsWith('+' + $headCommit)) {
             throw "$($binary.Name) was built from other source ($($binary.VersionInfo.ProductVersion)), not commit $headCommit. Rebuild without -SkipBuild."
         }

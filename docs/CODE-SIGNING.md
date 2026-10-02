@@ -102,7 +102,8 @@ both application builds. Release versions must be `MAJOR.MINOR.PATCH`, the only
 form installed updaters offer; a test build needs `-TestBuild` and a four-part
 version such as `0.1.8.9`, which sorts below the next release and can never be
 offered as one. `-SkipBuild` checks the version of the existing DLB
-outputs; it does not establish source freshness, so release builds should rebuild.
+outputs but cannot establish source freshness, so signed release builds refuse
+it and always rebuild from the committed source.
 
 ## Signing order and checks
 

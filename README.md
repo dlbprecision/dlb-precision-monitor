@@ -29,8 +29,8 @@ program: close it there (or sign that user out), then choose **Try again**.
 
 On **v0.1.8**, the update window can open hidden behind Settings. If nothing
 seems to happen after **Check for updates…** in Settings, close Settings: the
-update window is behind it. (Next time, close Settings first or use the
-right-click menu.) If v0.1.8 reports that
+update window is behind it. (Next time, close Settings first, then use **Check
+for updates…** in the right-click menu.) If v0.1.8 reports that
 the update "didn't finish (code 21)", the update is installed but the sensor
 service needs a Windows restart.
 
