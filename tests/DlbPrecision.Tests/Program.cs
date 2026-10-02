@@ -414,6 +414,28 @@ internal static class Program
             }
         }
 
+        // A reopen starts the count again: one blip just after a reopen that fixed an outage is an isolated
+        // dropout, so a later dropout that clears by itself is still cancelled instead of spending the last retry.
+        // And a short dropout soon after a flicker is timed from its own start, so readings that come back in time
+        // cancel it. Also at start-up.
+        foreach (var (name, blanks, expected) in new[]
+        {
+            ("A blip after a reopen that fixed an outage, then a dropout that clears by itself,",
+                new Func<long, bool>(t => (t >= 100_000 && t < 140_000) || t == 143_000 || t == 260_000 || t == 261_000), 2),
+            ("A blip, then two blank samples 3 seconds later,", new Func<long, bool>(t => t == 100_000 || t == 103_000 || t == 104_000), 0),
+            ("Blank samples at 0, 2 and 4 seconds after start-up", new Func<long, bool>(t => t == 0 || t == 2_000 || t == 4_000), 0),
+        })
+        {
+            recovery = new SensorRecovery();
+            int blankReopens = 0;
+            for (long t = 0; t <= 600_000; t += 1000)
+            {
+                if (t > 0 && recovery.TryBeginRetry(t)) blankReopens++;
+                recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = blanks(t) ? (double?)null : 4000, Gpus = ReportingGpu() }, t);
+            }
+            Check(blankReopens == expected, name + " reopen sensors " + expected + " times (" + blankReopens + ").");
+        }
+
         // Readings that were good when sampling paused (the widget hidden) and blank when it resumed start a new
         // fault: older dropouts before the pause don't make a retry due at once.
         recovery = new SensorRecovery();

@@ -124,6 +124,8 @@ namespace DlbPrecision.Service
             track.Retries++;
             track.DueAt = -1;
             track.Firm = false;
+            // A reopen starts the count again; a bad sample straight after it still makes a fault.
+            track.BadSamples = 1;
             track.Reopened = true;
         }
 
@@ -180,8 +182,9 @@ namespace DlbPrecision.Service
             bool afterGood = track.GoodSince >= 0;
             if (afterGood && milliseconds - track.GoodSince >= SettleTime) track.BadSamples = 0;
             track.GoodSince = -1;
-            // The first sample after a reopen comes once it has finished, however long that took.
-            if (track.BadSamples++ == 0 || track.Reopened) track.BadSince = milliseconds;
+            // A retry waits from the start of the latest run of bad samples, so readings that come back in time can
+            // still cancel it; the first sample after a reopen comes once it has finished, however long that took.
+            if (track.BadSamples++ == 0 || track.Reopened || afterGood) track.BadSince = milliseconds;
             track.Reopened = false;
             if (track.BadSamples < (afterGood ? 3 : 2) || track.DueAt >= 0 || track.Retries == delays.Length) return;
             track.DueAt = track.BadSince + delays[track.Retries];
