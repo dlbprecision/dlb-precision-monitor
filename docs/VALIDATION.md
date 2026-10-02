@@ -5,6 +5,121 @@ Dates use America/Chicago.
 
 Test machine: Windows 11 Pro x64, Ryzen 9 9950X3D, NVIDIA GeForce RTX 5090, approximately 96 GB physical RAM. Existing signed PawnIO 2.2.0 was preserved.
 
+## October 2 v0.1.9 updater hardening
+
+v0.1.9 fixes every finding of the independent review of v0.1.8 and is meant to
+be the first release marked **Latest**, so every v0.1.8 copy takes its first
+in-app update to it.
+
+- **Signed release candidate**, built from commit `c416bbc`
+  (`release-0.1.9-signed-attempt-9`): **7,475,512 bytes**, SHA256
+  `cf538c2df9be4ce09c37ef46748d48c00189a165ba40ad9fdf6feef4c7e12944`. Setup, its
+  uninstaller and the five DLB binaries carry valid, timestamped **DLB Precision,
+  LLC** signatures, and the binaries record `0.1.9+c416bbc…`. The build's own
+  in-app updater check accepted it. A signed test build versioned **0.1.8.9**
+  (SHA256 `ac98610c…41e07c6`) was built from the same commit and never published.
+  Attempts 1 to 8 (`9fc4761`, `65496db`, `8ce5e7f`, `5eeb15a`, `e7c00f6`,
+  `347c370`, `3333cfb`, `c7ab40f`) predate the last review fixes and must never
+  be published.
+- **Checks:** **224** client/startup/updater/integration assertions (including
+  live verification: the genuine signed v0.1.8 setup is accepted, while the
+  installed monitor program and uninstaller renamed as a setup are refused),
+  **15** sensor-selection, **64** widget and **130** updater smoke checks. Zero
+  warnings. Each new test for a fixed bug was confirmed to fail without its
+  fix (Enter in the shown window, Settings at 150%, the Settings heading, GPU
+  driver installs, CPU retries behind a GPU wait, a bad CPU sample during a
+  driver install, reopens closer than 10 s, a window minimized during the
+  install, Settings leaving always-on-top, a card that drops out while another
+  card's retries run, faults that keep returning, a failed read, one-sample
+  dropouts, a sensor reader that can't be rebuilt, a false "will retry", a slow
+  reopen, readings blank on every other sample, two separate dropouts a few
+  seconds apart, dropouts around a pause in sampling, a blip just after a reopen,
+  a dropout soon after a flicker, and a day of random one-sample dropouts, which
+  reopened sensors 13 times with attempt 7 and once with this one). The
+  integration suite passed 40 consecutive runs on the final commit.
+- **Randomized checks of sensor recovery**, one sample a second for an hour per
+  scenario: **30,000** scenarios on the final commit (CPU outages, graphics-driver
+  installs, unplugged, broken and flickering cards, faults that a reopen heals,
+  failed reads, up to three cards) found no problems; reopens were never closer
+  than 10 s apart. Earlier versions of the fix failed the same checks (73 lost
+  cards in one; 1,046 problems in 3,000 multi-card scenarios in another).
+- **Display scaling**, measured by running the real windows in a process with the
+  app's own per-monitor DPI settings and WinForms set to 150%: v0.1.8 cut off
+  **12** Settings labels and **2** updater texts (including **Update now**);
+  v0.1.9 cut off **none**, also after a simulated move between displays.
+- **End to end on the office PC** with the signed release candidate, driving the
+  real windows through UI Automation:
+  - **Settings → Check for updates** with "Keep above desktop windows" on. On
+    v0.1.8 the updater was the active window but **hidden behind Settings**, and a
+    second click did not raise it. On v0.1.8.9 (the v0.1.9 code) it opened
+    **on top**, centred, stayed on top after a second click, and Settings left
+    always-on-top.
+  - **Update v0.1.8 → v0.1.9** with the installed **v0.1.8 updater** (what every
+    customer runs) through a local feed describing the release candidate: offered,
+    verified, installed and reopened. The release notes read correctly in the
+    v0.1.8 window. Every binary reports **0.1.9.0** with valid signatures, the
+    service and PawnIO were running, the settings file was byte-for-byte unchanged,
+    launch at sign-in stayed off as set beforehand (then restored), no Public
+    desktop shortcut was created, no failure log was kept, and the v0.1.8 copy's
+    temporary folder was removed by the new v0.1.9 updater (the `--cleanup`
+    contract).
+  - **Update v0.1.8.9 → v0.1.9** with the new updater: the same results, with the
+    stricter publisher (Arkansas, US) and setup-identity checks passing on the
+    real signature. The window left always-on-top while setup ran and returned
+    to it for the result; minimized during the install, it came back at full
+    size, centred.
+  - The live v0.1.9 sensor service reported all seven readings with status
+    `ok` and no warnings.
+  - These runs were repeated on every signed attempt except attempt 8, which was
+    superseded before testing; attempt 9 matched attempt 6 line for line.
+    Attempts 5 to 9 changed only sensor recovery, so the display-scaling and
+    window checks above, made on attempt 4, still apply.
+  - The published v0.1.8 setup was then reinstalled (its updater matches the
+    released file, SHA256 `af95933c…`), leaving the PC on v0.1.8 for the real
+    GitHub update at go-live.
+- **Release tooling:** `Build-Installer.ps1 -Sign` refuses uncommitted source,
+  binaries built from another commit (including through `-SkipBuild`) and
+  four-part versions without `-TestBuild`. `Check-LatestOffer.ps1 -AsIfLatest`,
+  run with the installed v0.1.8 updater against the real published v0.1.8
+  pre-release, passed both the offer check and verification after a real
+  download.
+
+Seven rounds of independent multi-agent review checked the changes, plus three
+narrow reviews of the last fixes. The first raised 15 low-severity findings;
+the second found one medium regression in those fixes (the minimized window) and
+eight low ones; the third found that signed builds could still reuse uncommitted
+outputs and that the CPU retry change could spend GPU retries. The fourth to
+seventh concentrated on sensor recovery: a stopped graphics card was not retried
+once an unreadable CPU had used its retries; all cards shared one retry budget,
+one good reading refilled a budget, and one failed read forgot every card;
+one-sample dropouts armed retries; and the next retry was timed from the start of
+a slow reopen, while readings blank on every other sample were never retried.
+The first narrow review found that the fix for flickering readings counted
+separate dropouts a few seconds apart as one fault, so random dropouts reopened
+sensors many times a day; the second found two smaller cases of the same kind
+(a blip just after a reopen, and a dropout soon after a flicker); the third, on
+the final code, found nothing further. Everything they confirmed is fixed here.
+
+Known limitations of graphics-card recovery, left for a later release:
+
+- Under LibreHardwareMonitor 0.9.6, NVIDIA and AMD cards keep their last values
+  when the vendor API fails, so after an in-place driver update (no restart) a
+  card's readings may freeze instead of going blank, and recovery cannot notice.
+  A restart of Windows or of the DLB sensor service clears it.
+- NVIDIA and AMD cards are identified by enumeration slot, so with two cards of
+  one brand a missing card can shift the other's slot; two identical Intel Arc
+  cards share one id.
+- A second blank-out of the same card within 5 minutes of it recovering
+  continues the earlier retry schedule (longer waits, or the "restart the
+  service" message) instead of starting a fresh one. This is what keeps a
+  recurring fault from reopening sensors without end.
+
+Not yet covered: a PC with default UAC (the prompt on the secure desktop, and
+declining it), physical 125%/150% and mixed-DPI displays, a PC where another
+Windows user has the widget open, Smart App Control or third-party antivirus,
+setup's new exit codes 7 and 21 produced by a real failure, and the in-app update
+offered by the real GitHub **Latest** release, which is the go-live step.
+
 ## September 30 v0.1.8 in-app updater
 
 v0.1.8 adds **Check for updates** (Settings and the right-click/tray menu). A
