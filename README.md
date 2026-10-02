@@ -28,9 +28,10 @@ monitor open, the update waits, because Windows can't close another user's
 program: close it there (or sign that user out), then choose **Try again**.
 
 On **v0.1.8**, the update window can open hidden behind Settings. If nothing
-seems to happen after **Check for updates…** in Settings, close Settings: the
-update window is behind it. (Next time, close Settings first, then use **Check
-for updates…** in the right-click menu.) If v0.1.8 reports that
+seems to happen after **Check for updates…** in Settings, choose **Apply** if
+you changed anything (closing Settings discards unapplied changes), then close
+Settings: the update window is behind it. (Next time, close Settings first, then
+use **Check for updates…** in the right-click menu.) If v0.1.8 reports that
 the update "didn't finish (code 21)", the update is installed but the sensor
 service needs a Windows restart.
 
@@ -157,10 +158,15 @@ these rules is silently never offered, so follow this list every time:
    because a copy that skipped releases keeps its own rules. Before marking
    Latest, run the pre-flight against the published pre-release:
    `.\scripts\Check-LatestOffer.ps1 -Updater <older DlbPrecision.Updater.exe> -Feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/vX.Y.Z -AsIfLatest -ExpectVersion X.Y.Z`.
-   Then mark the release **Latest**, wait a minute, and run it again without
-   `-Feed` and `-AsIfLatest`. Each run must print two PASS lines (offered, and
-   verified after a real download). "You're up to date" in the window is not a
-   go-live check.
+   Merge the release PR (with a merge commit) before marking Latest, so the
+   README on `main` already offers the new download. Then make it Latest: edit
+   the release, untick **Set as a pre-release** (a pre-release can't be Latest)
+   and tick **Set as the latest release**, or run
+   `gh release edit vX.Y.Z --prerelease=false --latest`. Check that
+   `/releases/latest` returns it, wait a minute, and run the go-live check again
+   without `-Feed` and `-AsIfLatest`. Each run must print two PASS lines
+   (offered, and verified after a real download). "You're up to date" in the
+   window is not a go-live check.
 7. To pull a release back, make the **previous good release** Latest rather
    than only marking the bad one as a pre-release: edit it, untick **Set as a
    pre-release** (a pre-release can't be Latest), tick **Set as the latest
