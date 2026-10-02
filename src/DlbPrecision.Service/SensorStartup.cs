@@ -68,6 +68,7 @@ namespace DlbPrecision.Service
         // (unplugged or disabled).
         private static readonly long[] CpuDelays = { 10000, 30000, 60000 };
         private static readonly long[] GpuDelays = { 10000, 60000, 300000, 900000 };
+        // A fault counts only once it lasts two samples, so an isolated dropout costs nothing.
         // A brief good reading neither cancels a planned retry nor refills a budget. Readings must stay good for
         // SettleTime to cancel a retry, and for RefillTime before a new fault gets a fresh budget. A fault that
         // returns within RefillTime of such a natural recovery gets a firm retry that good readings no longer
@@ -84,6 +85,8 @@ namespace DlbPrecision.Service
             public long DueAt = -1;
             public bool Firm;            // the planned retry happens even if readings come back first
             public long GoodSince = -1;  // -1 while failing
+            public long BadSince;        // start of the fault, or of the wait since the last reopen
+            public int BadSamples;
             public long CancelledAt = long.MinValue / 2;
         }
 
@@ -96,8 +99,8 @@ namespace DlbPrecision.Service
         private long lastReopenAt = -1;
 
         internal bool Pending => cpu.DueAt >= 0 || gpus.Values.Any(card => card.DueAt >= 0);
-        // A retry is planned and readings are still missing: what the "will retry" message promises.
-        internal bool Retrying => Pending && !(cpuReady && gpusReady);
+        // A retry is planned for a reading that is missing now: what the "will retry" message promises.
+        internal bool Retrying => (!cpuReady && cpu.DueAt >= 0) || gpus.Values.Any(card => card.GoodSince < 0 && card.DueAt >= 0);
         internal bool CpuExhausted => !cpuReady && cpu.Retries == CpuDelays.Length;
         internal bool GpuExhausted => gpus.Values.Any(card => card.GoodSince < 0 && card.Retries == GpuDelays.Length);
 
@@ -119,6 +122,7 @@ namespace DlbPrecision.Service
             track.Retries++;
             track.DueAt = -1;
             track.Firm = false;
+            track.BadSince = milliseconds; // the next retry waits from this reopen
         }
 
         internal static bool CpuReady(SensorSnapshot snapshot) => snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
@@ -136,8 +140,14 @@ namespace DlbPrecision.Service
         {
             cpuReady = CpuReady(snapshot);
             Update(cpu, cpuReady, CpuDelays, milliseconds);
-            // A failed read lists nothing, which says nothing about the cards: leave them as they were.
-            if (!snapshot.ReadFailed)
+            // A failed read lists nothing, which says nothing about the cards: none starts or stops failing, and
+            // none is forgotten. Cards already failing keep their retries going, since nothing else may reopen.
+            if (snapshot.ReadFailed)
+            {
+                foreach (Track card in gpus.Values)
+                    if (card.GoodSince < 0) Update(card, false, GpuDelays, milliseconds);
+            }
+            else
             {
                 foreach (GpuSnapshot gpu in snapshot.Gpus)
                     if (HasReading(gpu) && !gpus.ContainsKey(gpu.Id)) gpus[gpu.Id] = new Track();
@@ -158,6 +168,7 @@ namespace DlbPrecision.Service
         {
             if (good)
             {
+                track.BadSamples = 0;
                 if (track.GoodSince < 0) track.GoodSince = milliseconds;
                 long goodFor = milliseconds - track.GoodSince;
                 if (goodFor >= SettleTime && track.DueAt >= 0 && !track.Firm) { track.DueAt = -1; track.CancelledAt = milliseconds; }
@@ -165,8 +176,9 @@ namespace DlbPrecision.Service
                 return;
             }
             track.GoodSince = -1;
-            if (track.DueAt >= 0 || track.Retries == delays.Length) return;
-            track.DueAt = milliseconds + delays[track.Retries];
+            if (track.BadSamples++ == 0) track.BadSince = milliseconds;
+            if (track.BadSamples < 2 || track.DueAt >= 0 || track.Retries == delays.Length) return;
+            track.DueAt = track.BadSince + delays[track.Retries];
             track.Firm = milliseconds - track.CancelledAt < RefillTime;
         }
 
