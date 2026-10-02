@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+(\.\d+)?$')]
-    [string]$Version = '0.1.8',
+    [string]$Version = '0.1.9',
+    [switch]$TestBuild,
     [string]$IsccPath,
     [switch]$SkipBuild,
     [string]$OutputDirectory,
@@ -14,6 +15,13 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
+# Installed updaters only offer tags matching vMAJOR.MINOR.PATCH (1-4, 1-4 and 1-5 digits). A test build
+# takes a fourth part, so it sorts below the next release and can never be offered as one.
+if ($TestBuild) {
+    if ($Version -notmatch '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$') { throw '-TestBuild needs a four-part version such as 0.1.8.9.' }
+} elseif ($Version -notmatch '^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,5}$') {
+    throw "Release versions are MAJOR.MINOR.PATCH, which is all installed updaters accept. For a test build use -TestBuild with a four-part version."
+}
 $repoRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $manifest = Get-Content -LiteralPath (Join-Path $repoRoot 'installer\vendor\manifest.json') -Raw | ConvertFrom-Json
 $toolsRoot = Join-Path $repoRoot '.tools'
@@ -289,6 +297,17 @@ if ($Sign) {
 }
 $setupHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $setupFile).Hash.ToLowerInvariant()
 Set-Content -LiteralPath ($setupFile + '.sha256') -Value ($setupHash + '  ' + [IO.Path]::GetFileName($setupFile)) -Encoding ASCII
+if ($Sign) {
+    # The just-built updater checks the setup and checksum exactly as every installed copy will before
+    # running it: name, size, checksum, Windows signature check, publisher identity, setup identity and version.
+    $verifyReport = Join-Path $buildRoot ('updater-verification-' + [Guid]::NewGuid().ToString('N') + '.txt')
+    $verifyArguments = '--verify-package "' + $setupFile + '" ' + $Version + ' "' + $verifyReport + '"'
+    if ($TestBuild) { $verifyArguments += ' --test-build' }
+    $verifier = Start-Process -FilePath (Join-Path $appStage 'DlbPrecision.Updater.exe') -ArgumentList $verifyArguments -WindowStyle Hidden -Wait -PassThru
+    $verdict = if (Test-Path -LiteralPath $verifyReport) { (Get-Content -LiteralPath $verifyReport -Raw).Trim() } else { 'no report written' }
+    if ($verifier.ExitCode -ne 0) { throw "Installed updaters would refuse this setup: $verdict" }
+    Write-Host ('In-app updater check: ' + $verdict)
+}
 Write-Host ('Built: ' + $setupFile)
 Write-Host ('Size: {0:N2} MiB; SHA256: {1}' -f ((Get-Item -LiteralPath $setupFile).Length / 1MB), $setupHash)
 if ($Sign) { Write-Host 'DLB signatures, publisher and timestamps verified.' }
