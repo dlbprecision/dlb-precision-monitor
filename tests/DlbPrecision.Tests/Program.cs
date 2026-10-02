@@ -193,11 +193,7 @@ internal static class Program
         recovery.Observe(Sample(live, second), 0);
         long now = 1000;
         Check(!recovery.Observe(Sample(live), now) && recovery.Pending, "A GPU that disappears is first treated as a GPU that stopped reporting.");
-        for (int attempt = 0; attempt < 3; attempt++)
-        {
-            while (!recovery.TryBeginRetry(now)) { now += 1000; if (now > 1_000_000) throw new InvalidOperationException("Recovery stopped retrying early."); }
-            recovery.Observe(Sample(live), now);
-        }
+        while (recovery.Pending) now = RetryAndObserve(recovery, now, Sample(live));
         Check(recovery.Observe(Sample(live), now + 1000) && !recovery.Pending && !recovery.CpuExhausted && !recovery.GpuExhausted,
             "A GPU still not listed after its retries is treated as removed, so healthy sensors stop reporting a problem.");
         var cpuLost = new SensorSnapshot { CpuTemperatureC = 50, Gpus = new List<GpuSnapshot> { live } };
@@ -209,11 +205,7 @@ internal static class Program
         recovery.Observe(Sample(live), 0);
         now = 1000;
         recovery.Observe(Sample(blank), now);
-        for (int attempt = 0; attempt < 3; attempt++)
-        {
-            while (!recovery.TryBeginRetry(now)) { now += 1000; if (now > 1_000_000) throw new InvalidOperationException("Recovery stopped retrying early."); }
-            recovery.Observe(Sample(blank), now);
-        }
+        while (recovery.Pending) now = RetryAndObserve(recovery, now, Sample(blank));
         Check(!recovery.Pending && recovery.GpuExhausted && !recovery.CpuExhausted,
             "A listed GPU that never reports again exhausts only the GPU retries.");
         cpuLost = new SensorSnapshot { CpuTemperatureC = 50, Gpus = new List<GpuSnapshot> { blank } };
@@ -222,6 +214,23 @@ internal static class Program
         Check(recovery.Observe(Sample(live), now + 12000) && !recovery.Pending && !recovery.GpuExhausted && !recovery.CpuExhausted,
             "Readings that come back clear both budgets.");
 
+        // A graphics-driver install can keep the card unlisted for minutes; it must still be found again.
+        recovery = new SensorRecovery();
+        recovery.Observe(Sample(live), 0);
+        now = 1000;
+        recovery.Observe(Sample(blank), now);
+        const long driverInstalled = 8 * 60 * 1000;
+        int reopens = 0;
+        while (recovery.Pending)
+        {
+            now = RetryAndObserve(recovery, now, null);
+            reopens++;
+            recovery.Observe(now < driverInstalled ? Sample() : Sample(live), now);
+        }
+        Check(now >= driverInstalled && recovery.Observe(Sample(live), now + 1000) && !recovery.GpuExhausted && reopens <= 4,
+            "A graphics driver that takes 8 minutes to install is found again by the slower GPU retries, after at most four sensor reopens (" + reopens + ").");
+        Check(!recovery.Observe(Sample(blank), now + 2000) && recovery.Pending, "That GPU is still watched afterwards.");
+
         var reported = new SensorSnapshot { Status = "ok" };
         SensorRecovery.AddWarning(reported, "Retrying sensors.");
         Check(reported.Status == "partial" && reported.Warnings.Contains("Retrying sensors."),
@@ -229,6 +238,19 @@ internal static class Program
         var unavailable = SensorSnapshot.Unavailable("Missing driver");
         SensorRecovery.AddWarning(unavailable, "Retrying sensors.");
         Check(unavailable.Status == "Missing driver", "An explicit failure status is kept when a warning is added.");
+    }
+
+    // Waits for the next permitted retry, then reports the sample read after reopening sensors (if given).
+    private static long RetryAndObserve(SensorRecovery recovery, long now, SensorSnapshot? afterReopen)
+    {
+        long limit = now + 3_600_000;
+        while (!recovery.TryBeginRetry(now))
+        {
+            now += 1000;
+            if (now > limit) throw new InvalidOperationException("Recovery stopped retrying early.");
+        }
+        if (afterReopen != null) recovery.Observe(afterReopen, now);
+        return now;
     }
 
     private static void SamplePolicyTests()

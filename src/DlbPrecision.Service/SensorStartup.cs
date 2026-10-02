@@ -59,10 +59,12 @@ namespace DlbPrecision.Service
 
     internal sealed class SensorRecovery
     {
-        // Cap rediscovery at three retries each for the CPU and the GPUs; unsupported hardware stays
-        // partial until readings recover or the service restarts. Separate budgets keep a GPU problem
-        // from ever using up the CPU's recovery.
-        private static readonly long[] Delays = { 10000, 30000, 60000 };
+        // Bounded rediscovery; unsupported hardware stays partial until readings recover or the service
+        // restarts. Separate budgets keep a GPU problem from ever using up the CPU's recovery. GPU retries
+        // run longer (about 21 minutes in all), because a graphics-driver install can keep the card
+        // unlisted for several minutes, and a card is only forgotten once they are spent.
+        private static readonly long[] CpuDelays = { 10000, 30000, 60000 };
+        private static readonly long[] GpuDelays = { 10000, 60000, 300000, 900000 };
         private readonly HashSet<string> reportingGpus = new HashSet<string>(StringComparer.Ordinal);
         private int cpuRetries;
         private int gpuRetries;
@@ -71,14 +73,14 @@ namespace DlbPrecision.Service
         private long retryAt = -1;
 
         internal bool Pending => retryAt >= 0;
-        internal bool CpuExhausted => !cpuReady && cpuRetries == Delays.Length;
-        internal bool GpuExhausted => !gpusReady && gpuRetries == Delays.Length;
+        internal bool CpuExhausted => !cpuReady && cpuRetries == CpuDelays.Length;
+        internal bool GpuExhausted => !gpusReady && gpuRetries == GpuDelays.Length;
 
         internal bool TryBeginRetry(long milliseconds)
         {
             if (!Pending || milliseconds < retryAt) return false;
-            if (!cpuReady && cpuRetries < Delays.Length) cpuRetries++;
-            if (!gpusReady && gpuRetries < Delays.Length) gpuRetries++;
+            if (!cpuReady && cpuRetries < CpuDelays.Length) cpuRetries++;
+            if (!gpusReady && gpuRetries < GpuDelays.Length) gpuRetries++;
             retryAt = -1;
             return true;
         }
@@ -99,7 +101,7 @@ namespace DlbPrecision.Service
         {
             // Once the GPU retries are spent, a watched GPU that sensors no longer list at all was
             // unplugged or disabled; stop waiting for it.
-            if (gpuRetries == Delays.Length) reportingGpus.RemoveWhere(id => !IsListed(snapshot, id));
+            if (gpuRetries == GpuDelays.Length) reportingGpus.RemoveWhere(id => !IsListed(snapshot, id));
             gpusReady = true;
             foreach (string id in reportingGpus)
                 if (!IsReporting(snapshot, id)) gpusReady = false;
@@ -109,10 +111,10 @@ namespace DlbPrecision.Service
             cpuReady = CpuReady(snapshot);
             if (cpuReady) cpuRetries = 0;
             if (gpusReady) gpuRetries = 0;
-            bool cpuRetry = !cpuReady && cpuRetries < Delays.Length;
-            bool gpuRetry = !gpusReady && gpuRetries < Delays.Length;
+            bool cpuRetry = !cpuReady && cpuRetries < CpuDelays.Length;
+            bool gpuRetry = !gpusReady && gpuRetries < GpuDelays.Length;
             if (!cpuRetry && !gpuRetry) retryAt = -1;
-            else if (!Pending) retryAt = milliseconds + Delays[cpuRetry ? cpuRetries : gpuRetries];
+            else if (!Pending) retryAt = milliseconds + (cpuRetry ? CpuDelays[cpuRetries] : GpuDelays[gpuRetries]);
             return cpuReady && gpusReady;
         }
 
