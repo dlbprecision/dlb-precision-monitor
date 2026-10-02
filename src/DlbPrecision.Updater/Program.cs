@@ -345,9 +345,31 @@ namespace DlbPrecision.Updater
                 PressEnter(form);
                 verify(!form.IsDisposed && Find(form, "Status").Text.StartsWith("Downloading"), "Enter during a download never presses Cancel, even when it has focus");
                 form.ShowInstalling();
-                verify(!form.TopMost, "While setup runs, the updater is not always on top, so setup's own windows can appear above it");
+                verify(!form.AlwaysOnTop, "While setup runs, the updater is not always on top, so setup's own windows can appear above it");
                 form.ShowResult(new SetupResult(SetupOutcome.Failed, 4, @"C:\example\update-setup.log"));
-                verify(form.TopMost, "The result is always on top again, so it is not hidden behind an always-on-top Settings window");
+                verify(form.AlwaysOnTop, "The result is always on top again, so it is not hidden behind an always-on-top window");
+                form.ShowInstalling();
+                form.ShowError("The updater hit an unexpected problem.", null);
+                verify(form.AlwaysOnTop, "An error after setup started is always on top again too");
+                form.Close();
+            }
+            // With a taskbar button, as the real updater has: Windows then parks a minimized window off-screen.
+            using (var form = new UpdaterForm(@"C:\Program Files\DLB Precision Monitor", null, Path.GetTempPath(), startCheck: false) { Opacity = 0 })
+            {
+                form.Show();
+                Application.DoEvents();
+                Rectangle area = Screen.FromControl(form).WorkingArea;
+                form.ShowDownloading(1_000_000, 7_434_112);
+                form.WindowState = FormWindowState.Minimized;
+                Application.DoEvents();
+                form.ShowVerifying();
+                form.ShowInstalling();
+                form.ShowResult(new SetupResult(SetupOutcome.Failed, 4, @"C:\example\update-setup.log"));
+                form.WindowState = FormWindowState.Normal;
+                Application.DoEvents();
+                List<string> problems = LayoutProblems(form);
+                verify(form.ClientSize.Width >= 470 && form.ClientSize.Height >= 300 && area.Contains(form.Bounds) && form.Left > area.Left && problems.Count == 0,
+                    "A window minimized during the install comes back at full size, centred, with its result readable (" + form.Bounds + ")");
                 form.Close();
             }
             Rectangle narrow = new Rectangle(1000, 0, 480, 1920);
@@ -377,7 +399,7 @@ namespace DlbPrecision.Updater
 
             using (UpdaterForm form = OffscreenForm())
             {
-                verify(form.TopMost, "The updater opens above an always-on-top Settings window instead of hidden behind it");
+                verify(form.TopMost && form.AlwaysOnTop, "The updater opens above an always-on-top window instead of hidden behind it");
                 form.ShowChecking();
                 verify(!Find(form, "Primary").Visible && Find(form, "Secondary").Enabled && Find(form, "Secondary").Text == "Close",
                     "Checking can be closed and offers nothing to install");

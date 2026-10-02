@@ -84,6 +84,9 @@ namespace DlbPrecision.Updater
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool ShowWindow(IntPtr window, int command);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
         public static readonly IntPtr TopMostWindow = new IntPtr(-1);           // HWND_TOPMOST
+        public static readonly IntPtr NotTopMostWindow = new IntPtr(-2);        // HWND_NOTOPMOST
+        public const uint ZOrderOnly = 0x0001 | 0x0002 | 0x0010;                // SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE
+        [DllImport("user32.dll", EntryPoint = "GetWindowLongW")] public static extern int GetWindowLong(IntPtr window, int index);
         public const uint KeepPositionAndSize = 0x0001 | 0x0002 | 0x0040;       // SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]
         public static extern bool SetWindowPos(IntPtr window, IntPtr insertAfter, int x, int y, int width, int height, uint flags);

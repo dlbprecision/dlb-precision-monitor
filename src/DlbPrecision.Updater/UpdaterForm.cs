@@ -74,6 +74,9 @@ namespace DlbPrecision.Updater
         private bool arranging;
         private bool ownedResourcesDisposed;
 
+        // What Windows actually shows, which is what matters for being above other windows.
+        internal bool AlwaysOnTop => IsHandleCreated ? (NativeMethods.GetWindowLong(Handle, -20) & 0x8) != 0 : TopMost;
+
         public UpdaterForm(string installDirectory, string? feed, string workingFolder, bool startCheck = true)
         {
             this.installDirectory = installDirectory;
@@ -122,7 +125,7 @@ namespace DlbPrecision.Updater
         protected override void OnShown(EventArgs args)
         {
             base.OnShown(args);
-            Bounds = KeepOnScreen(Bounds, Screen.FromControl(this).WorkingArea);
+            if (WindowState == FormWindowState.Normal) Bounds = KeepOnScreen(Bounds, Screen.FromControl(this).WorkingArea);
             if (startCheck) StartCheck();
         }
 
@@ -187,8 +190,8 @@ namespace DlbPrecision.Updater
 
         internal void ShowInstalling()
         {
-            // Setup closes the always-on-top Settings window anyway, and its own windows must not be covered.
-            TopMost = false;
+            // Setup's own windows must not be covered while it runs.
+            SetAlwaysOnTop(false);
             Present("Installing the update. If Windows asks for permission, click Yes. Your monitor will close and reopen.", Foreground,
                 false, false, null, "Close", null);
             secondary.Enabled = false;
@@ -196,8 +199,7 @@ namespace DlbPrecision.Updater
 
         internal void ShowResult(SetupResult result)
         {
-            // If setup never started, Settings may still be open and always on top.
-            TopMost = true;
+            SetAlwaysOnTop(true);
             if (result.Outcome == SetupOutcome.InUseByAnotherUser) { ShowError(SetupRunner.Message(result), StartUpdate); return; }
             bool good = SetupRunner.IsUpdated(result.Outcome) && result.Outcome != SetupOutcome.UpdatedServiceNotRunning;
             keptLog = result.KeptLog;
@@ -206,8 +208,20 @@ namespace DlbPrecision.Updater
             if (result.Outcome == SetupOutcome.Updated) closeTimer.Start();
         }
 
-        internal void ShowError(string message, Action? retry) =>
+        internal void ShowError(string message, Action? retry)
+        {
+            SetAlwaysOnTop(true);
             Present(message, Warning, false, false, retry != null ? "Try again" : null, "Close", Close, retry, enterCloses: true);
+        }
+
+        // Once the window exists, z-order changes never activate it: WinForms' TopMost property would, and
+        // could pull the result in front of a game the person went back to during the install.
+        private void SetAlwaysOnTop(bool on)
+        {
+            if (!IsHandleCreated) { TopMost = on; return; }
+            if (AlwaysOnTop != on)
+                NativeMethods.SetWindowPos(Handle, on ? NativeMethods.TopMostWindow : NativeMethods.NotTopMostWindow, 0, 0, 0, 0, NativeMethods.ZOrderOnly);
+        }
 
         // Enter only ever means the visible main action, or Close on a finished screen. While checking or
         // downloading nothing has focus, so a repeated or stray Enter cannot cancel or close anything.
@@ -281,7 +295,8 @@ namespace DlbPrecision.Updater
                 Size link = TextRenderer.MeasureText(details.Text, details.Font);
                 details.SetBounds(left, buttonTop + (buttonHeight - link.Height) / 2, link.Width + Scaled(4), link.Height + Scaled(2));
                 ClientSize = new Size(clientWidth, buttonTop + buttonHeight + Scaled(20));
-                if (IsHandleCreated && Visible) Bounds = KeepOnScreen(Bounds, area);
+                // A minimized window is parked off-screen by Windows; moving it would become its restored size.
+                if (IsHandleCreated && Visible && WindowState == FormWindowState.Normal) Bounds = KeepOnScreen(Bounds, area);
             }
             finally
             {
@@ -446,7 +461,7 @@ namespace DlbPrecision.Updater
             if (keptLog == null || !File.Exists(keptLog)) return;
             // Full path: the updater runs from a temporary folder, which must not be able to supply its own "notepad".
             string notepad = Path.Combine(Environment.SystemDirectory, "notepad.exe");
-            TopMost = false; // the log the person asked for must be able to open above this window
+            SetAlwaysOnTop(false); // the log the person asked for must be able to open above this window
             try { using (Process.Start(new ProcessStartInfo(notepad, "\"" + keptLog + "\"") { UseShellExecute = false })) { } }
             catch (Win32Exception error) { ShowError("The setup log couldn't be opened: " + error.Message, null); }
         }
