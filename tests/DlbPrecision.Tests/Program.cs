@@ -242,6 +242,22 @@ internal static class Program
         Check(!recovery.Observe(cpuGone, now + 1000) && recovery.Pending && recovery.TryBeginRetry(now + 11000),
             "CPU readings lost while a 5-minute GPU retry is waiting are retried after 10 seconds, not after the GPU wait.");
 
+        // Separate CPU and GPU schedules never reopen sensors in quick succession.
+        recovery = new SensorRecovery();
+        recovery.Observe(Sample(live), 0);
+        recovery.Observe(Sample(blank), 1000);                       // GPU retry due at 11 s
+        var cpuAndGpuDown = new SensorSnapshot { CpuTemperatureC = 50, Gpus = new List<GpuSnapshot> { blank } };
+        recovery.Observe(cpuAndGpuDown, 8000);                        // CPU retry due at 18 s
+        Check(recovery.TryBeginRetry(11000) && !recovery.Observe(cpuAndGpuDown, 11000) && !recovery.TryBeginRetry(18000)
+            && !recovery.TryBeginRetry(20999) && recovery.TryBeginRetry(21000),
+            "Sensors are reopened at most once every 10 seconds, even when CPU and GPU retries fall close together.");
+
+        // A single bad CPU sample during a long GPU wait must not use up the GPU's own retries. Sensors are only
+        // listed again by a reopen: here the driver finishes after 8 minutes, and one CPU sample fails at 400 s.
+        Check(GpuFoundAfterDriverInstall(cpuGlitchAt: 400_000, cpuGlitchSamples: 1) && GpuFoundAfterDriverInstall(cpuGlitchAt: 400_000, cpuGlitchSamples: 15)
+            && GpuFoundAfterDriverInstall(cpuGlitchAt: -1, cpuGlitchSamples: 0),
+            "CPU readings that fail during a graphics-driver install never make the service give up on the graphics card early.");
+
         var reported = new SensorSnapshot { Status = "ok" };
         SensorRecovery.AddWarning(reported, "Retrying sensors.");
         Check(reported.Status == "partial" && reported.Warnings.Contains("Retrying sensors."),
@@ -249,6 +265,30 @@ internal static class Program
         var unavailable = SensorSnapshot.Unavailable("Missing driver");
         SensorRecovery.AddWarning(unavailable, "Retrying sensors.");
         Check(unavailable.Status == "Missing driver", "An explicit failure status is kept when a warning is added.");
+    }
+
+    // Simulates one sample a second while a graphics driver installs. Reopening sensors lists the card again only
+    // once the driver has finished; until the first reopen the card is still listed, but blank.
+    private static bool GpuFoundAfterDriverInstall(long cpuGlitchAt, int cpuGlitchSamples)
+    {
+        const long driverInstalled = 480_000;
+        var recovery = new SensorRecovery();
+        var card = new GpuSnapshot { Id = "gpu-0", Name = "GPU", TemperatureC = 40, LoadPercent = 3, ClockMhz = 300 };
+        var blankCard = new GpuSnapshot { Id = "gpu-0", Name = "GPU" };
+        recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = 4000, Gpus = new List<GpuSnapshot> { card } }, 0);
+        long lastReopen = -1;
+        bool found = false;
+        for (long now = 1000; now <= 2_400_000; now += 1000)
+        {
+            if (recovery.TryBeginRetry(now)) lastReopen = now;
+            var gpus = new List<GpuSnapshot>();
+            if (lastReopen < 0) gpus.Add(blankCard);
+            else if (lastReopen >= driverInstalled) gpus.Add(card);
+            bool cpuBad = cpuGlitchAt >= 0 && now >= cpuGlitchAt && now < cpuGlitchAt + cpuGlitchSamples * 1000;
+            var sample = new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = cpuBad ? (double?)null : 4000, Gpus = gpus };
+            found = recovery.Observe(sample, now) && gpus.Count == 1 && gpus[0].ClockMhz.HasValue;
+        }
+        return found && !recovery.Pending && !recovery.GpuExhausted;
     }
 
     // Waits for the next permitted retry, then reports the sample read after reopening sensors (if given).

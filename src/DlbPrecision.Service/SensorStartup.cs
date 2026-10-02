@@ -70,18 +70,25 @@ namespace DlbPrecision.Service
         private int gpuRetries;
         private bool cpuReady = true;
         private bool gpusReady = true;
-        private long retryAt = -1;
+        // Each kind keeps its own due time, so a CPU problem never moves or spends a GPU retry and the other way round.
+        private long cpuDueAt = -1;
+        private long gpuDueAt = -1;
+        private long lastReopenAt = -1;
 
-        internal bool Pending => retryAt >= 0;
+        internal bool Pending => cpuDueAt >= 0 || gpuDueAt >= 0;
+        private long RetryAt => cpuDueAt < 0 ? gpuDueAt : gpuDueAt < 0 ? cpuDueAt : Math.Min(cpuDueAt, gpuDueAt);
         internal bool CpuExhausted => !cpuReady && cpuRetries == CpuDelays.Length;
         internal bool GpuExhausted => !gpusReady && gpuRetries == GpuDelays.Length;
 
+        // One reopen serves both, but only a kind whose own retry was due spends it. Reopening is expensive, so
+        // reopens are at least the shortest retry delay apart even when the two schedules fall close together.
         internal bool TryBeginRetry(long milliseconds)
         {
-            if (!Pending || milliseconds < retryAt) return false;
-            if (!cpuReady && cpuRetries < CpuDelays.Length) cpuRetries++;
-            if (!gpusReady && gpuRetries < GpuDelays.Length) gpuRetries++;
-            retryAt = -1;
+            if (!Pending || milliseconds < RetryAt) return false;
+            if (lastReopenAt >= 0 && milliseconds < lastReopenAt + CpuDelays[0]) return false;
+            lastReopenAt = milliseconds;
+            if (cpuDueAt >= 0 && milliseconds >= cpuDueAt) { cpuRetries++; cpuDueAt = -1; }
+            if (gpuDueAt >= 0 && milliseconds >= gpuDueAt) { gpuRetries++; gpuDueAt = -1; }
             return true;
         }
 
@@ -111,17 +118,13 @@ namespace DlbPrecision.Service
             cpuReady = CpuReady(snapshot);
             if (cpuReady) cpuRetries = 0;
             if (gpusReady) gpuRetries = 0;
-            bool cpuRetry = !cpuReady && cpuRetries < CpuDelays.Length;
-            bool gpuRetry = !gpusReady && gpuRetries < GpuDelays.Length;
-            if (!cpuRetry && !gpuRetry) retryAt = -1;
-            else if (cpuRetry)
-            {
-                // CPU readings come first: a long GPU wait already scheduled never holds them up. Repeated failed
-                // samples still never postpone a retry that is due sooner.
-                long cpuAt = milliseconds + CpuDelays[cpuRetries];
-                retryAt = Pending ? Math.Min(retryAt, cpuAt) : cpuAt;
-            }
-            else if (!Pending) retryAt = milliseconds + GpuDelays[gpuRetries];
+            // A due time is set once and kept while the problem lasts, so repeated failed samples never postpone it.
+            if (cpuReady || cpuRetries == CpuDelays.Length) cpuDueAt = -1;
+            else if (cpuDueAt < 0) cpuDueAt = milliseconds + CpuDelays[cpuRetries];
+            // While the CPU can't be read, its retries reopen everything (GPU libraries included), so a GPU retry
+            // is only scheduled once the CPU reads again; one already scheduled is kept.
+            if (gpusReady || gpuRetries == GpuDelays.Length) gpuDueAt = -1;
+            else if (gpuDueAt < 0 && cpuReady) gpuDueAt = milliseconds + GpuDelays[gpuRetries];
             return cpuReady && gpusReady;
         }
 
