@@ -82,6 +82,7 @@ namespace DlbPrecision.Updater
         [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window, out uint processId);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool SetForegroundWindow(IntPtr window);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool ShowWindow(IntPtr window, int command);
+        [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PostMessage(IntPtr window, int message, IntPtr wParam, IntPtr lParam);
         public static readonly IntPtr TopMostWindow = new IntPtr(-1);           // HWND_TOPMOST
         public const uint KeepPositionAndSize = 0x0001 | 0x0002 | 0x0040;       // SWP_NOSIZE | SWP_NOMOVE | SWP_SHOWWINDOW
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)]

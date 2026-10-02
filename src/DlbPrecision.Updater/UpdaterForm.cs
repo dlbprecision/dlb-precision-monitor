@@ -122,7 +122,17 @@ namespace DlbPrecision.Updater
         protected override void OnShown(EventArgs args)
         {
             base.OnShown(args);
+            Bounds = KeepOnScreen(Bounds, Screen.FromControl(this).WorkingArea);
             if (startCheck) StartCheck();
+        }
+
+        // Enter only ever runs the screen's main action. While checking, downloading or installing there is
+        // none, so Enter does nothing even if a button has keyboard focus: a repeated or stray Enter can't
+        // cancel a download or close the window.
+        protected override bool ProcessDialogKey(Keys keyData)
+        {
+            if (keyData == Keys.Enter && AcceptButton == null) return true;
+            return base.ProcessDialogKey(keyData);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs args)
@@ -177,6 +187,8 @@ namespace DlbPrecision.Updater
 
         internal void ShowInstalling()
         {
+            // Setup closes the always-on-top Settings window anyway, and its own windows must not be covered.
+            TopMost = false;
             Present("Installing the update. If Windows asks for permission, click Yes. Your monitor will close and reopen.", Foreground,
                 false, false, null, "Close", null);
             secondary.Enabled = false;
@@ -184,6 +196,8 @@ namespace DlbPrecision.Updater
 
         internal void ShowResult(SetupResult result)
         {
+            // If setup never started, Settings may still be open and always on top.
+            TopMost = true;
             if (result.Outcome == SetupOutcome.InUseByAnotherUser) { ShowError(SetupRunner.Message(result), StartUpdate); return; }
             bool good = SetupRunner.IsUpdated(result.Outcome) && result.Outcome != SetupOutcome.UpdatedServiceNotRunning;
             keptLog = result.KeptLog;
@@ -249,7 +263,9 @@ namespace DlbPrecision.Updater
                 int contentTop = status.Bottom + Scaled(4);
                 int buttonHeight = Math.Max(Scaled(34), line + Scaled(14));
                 int chrome = Height - ClientSize.Height;
-                Rectangle area = Screen.FromControl(this).WorkingArea;
+                // Before the window exists, use the screen Windows will centre it on; asking for this window's
+                // own screen would create it early, at the default size, and leave it off-centre.
+                Rectangle area = (IsHandleCreated ? Screen.FromControl(this) : Screen.FromPoint(Cursor.Position)).WorkingArea;
                 int notesHeight = Scaled(150);
                 int overflow = contentTop + notesHeight + Scaled(18) + buttonHeight + Scaled(20) + chrome - area.Height;
                 if (overflow > 0) notesHeight = Math.Max(Scaled(60), notesHeight - overflow);
@@ -265,7 +281,7 @@ namespace DlbPrecision.Updater
                 Size link = TextRenderer.MeasureText(details.Text, details.Font);
                 details.SetBounds(left, buttonTop + (buttonHeight - link.Height) / 2, link.Width + Scaled(4), link.Height + Scaled(2));
                 ClientSize = new Size(clientWidth, buttonTop + buttonHeight + Scaled(20));
-                if (IsHandleCreated && Visible && Bottom > area.Bottom) Top = Math.Max(area.Top, area.Bottom - Height);
+                if (IsHandleCreated && Visible) Bounds = KeepOnScreen(Bounds, area);
             }
             finally
             {
@@ -402,6 +418,14 @@ namespace DlbPrecision.Updater
             return true;
         }
 
+        // Left and top win when the window is larger than the room left, so its title and text stay visible.
+        internal static Rectangle KeepOnScreen(Rectangle window, Rectangle area)
+        {
+            int x = Math.Max(area.Left, Math.Min(window.Left, area.Right - window.Width));
+            int y = Math.Max(area.Top, Math.Min(window.Top, area.Bottom - window.Height));
+            return new Rectangle(x, y, window.Width, window.Height);
+        }
+
         internal static string Display(Version version) =>
             version.Revision > 0 ? version.ToString(4) : version.ToString(3);
 
@@ -422,6 +446,7 @@ namespace DlbPrecision.Updater
             if (keptLog == null || !File.Exists(keptLog)) return;
             // Full path: the updater runs from a temporary folder, which must not be able to supply its own "notepad".
             string notepad = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+            TopMost = false; // the log the person asked for must be able to open above this window
             try { using (Process.Start(new ProcessStartInfo(notepad, "\"" + keptLog + "\"") { UseShellExecute = false })) { } }
             catch (Win32Exception error) { ShowError("The setup log couldn't be opened: " + error.Message, null); }
         }

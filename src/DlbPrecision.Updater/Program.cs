@@ -66,6 +66,7 @@ namespace DlbPrecision.Updater
             catch (Exception error)
             {
                 if (args.Length >= 2 && args[0] == "--smoke-test") File.WriteAllText(args[1], "FAILED\n" + error);
+                else if (args.Length >= 1 && args[0] == "--verify-package") return 3;
                 else MessageBox.Show("DLB Precision Monitor could not check for updates.\n\n" + error.Message, UpdaterForm.WindowTitle,
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return 1;
@@ -74,11 +75,28 @@ namespace DlbPrecision.Updater
 
         // The release build runs the updater's own checks on the signed setup, so a release that every
         // installed copy would refuse fails the build instead of reaching customers.
-        private static int VerifyForRelease(string setupPath, string version, string reportPath, bool testBuild)
+        // Exit 0: accepted. 2: installed updaters would refuse the setup. 3: the check itself failed. Never shows a window.
+        internal static int VerifyForRelease(string setupPath, string version, string reportPath, bool testBuild)
         {
-            VerificationResult result = PackageVerifier.VerifyPackage(Path.GetFullPath(setupPath), version, testBuild);
-            File.WriteAllText(reportPath, result.Ok ? "ACCEPTED " + Path.GetFileName(setupPath) + " as version " + version : "REJECTED " + result.Reason);
-            return result.Ok ? 0 : 2;
+            string outcome;
+            int code;
+            try
+            {
+                VerificationResult result = PackageVerifier.VerifyPackage(Path.GetFullPath(setupPath), version, testBuild);
+                outcome = result.Ok ? "ACCEPTED " + Path.GetFileName(setupPath) + " as version " + version : "REJECTED " + result.Reason;
+                code = result.Ok ? 0 : 2;
+            }
+            catch (Exception error)
+            {
+                outcome = "ERROR " + error.GetType().Name + ": " + error.Message;
+                code = 3;
+            }
+            try { File.WriteAllText(reportPath, outcome); }
+            catch (Exception error) when (error is IOException || error is UnauthorizedAccessException || error is ArgumentException || error is NotSupportedException)
+            {
+                return 3; // The build reports the missing report.
+            }
+            return code;
         }
 
         // Setup replaces every file in the install folder, so the updater waits for it from a private copy.
@@ -289,11 +307,73 @@ namespace DlbPrecision.Updater
                 }
         }
 
+        // Presses Enter the way a person does: through the window's message loop, on the focused control.
+        private static void PressEnter(Form form)
+        {
+            Control? focused = form.ActiveControl;
+            IntPtr target = focused != null ? focused.Handle : form.Handle;
+            NativeMethods.PostMessage(target, 0x0100, new IntPtr(0x0D), new IntPtr(0x001C0001)); // WM_KEYDOWN VK_RETURN
+            NativeMethods.PostMessage(target, 0x0101, new IntPtr(0x0D), new IntPtr(unchecked((int)0xC01C0001))); // WM_KEYUP
+            for (int pump = 0; pump < 10; pump++) { Application.DoEvents(); Thread.Sleep(10); }
+        }
+
         private static void RunSmokeTests(string? reportPath)
         {
             var results = new List<string>();
             Action<bool, string> verify = (passed, description) => { if (!passed) throw new InvalidOperationException(description); results.Add("PASS " + description); };
             Control Find(Form form, string name) => form.Controls.Find(name, true).Single();
+
+            // The real window: built, then shown centred by Windows, as the updater does.
+            using (var form = new UpdaterForm(@"C:\Program Files\DLB Precision Monitor", null, Path.GetTempPath(), startCheck: false) { ShowInTaskbar = false, Opacity = 0 })
+            {
+                verify(!form.IsHandleCreated, "The window is not created before it is shown, so Windows centres it at its real size");
+                form.Show();
+                Application.DoEvents();
+                Rectangle area = Screen.FromControl(form).WorkingArea;
+                Point centre = new Point(form.Left + form.Width / 2, form.Top + form.Height / 2);
+                Point expected = new Point(area.Left + area.Width / 2, area.Top + area.Height / 2);
+                verify(Math.Abs(centre.X - expected.X) <= 2 && Math.Abs(centre.Y - expected.Y) <= 2,
+                    "The updater opens centred on its screen (centre " + centre + ", screen centre " + expected + ")");
+                form.ShowChecking();
+                Find(form, "Secondary").Focus();
+                PressEnter(form);
+                verify(!form.IsDisposed && form.Visible, "Enter while checking does nothing, even when Close has keyboard focus in the shown window");
+                form.ShowAvailable(SampleOffer());
+                verify(form.ActiveControl == Find(form, "Primary"), "In the shown window, Update now has focus when an update is offered");
+                form.ShowDownloading(1_000_000, 7_434_112);
+                Find(form, "Secondary").Focus();
+                PressEnter(form);
+                verify(!form.IsDisposed && Find(form, "Status").Text.StartsWith("Downloading"), "Enter during a download never presses Cancel, even when it has focus");
+                form.ShowInstalling();
+                verify(!form.TopMost, "While setup runs, the updater is not always on top, so setup's own windows can appear above it");
+                form.ShowResult(new SetupResult(SetupOutcome.Failed, 4, @"C:\example\update-setup.log"));
+                verify(form.TopMost, "The result is always on top again, so it is not hidden behind an always-on-top Settings window");
+                form.Close();
+            }
+            Rectangle narrow = new Rectangle(1000, 0, 480, 1920);
+            verify(UpdaterForm.KeepOnScreen(new Rectangle(1090, 100, 496, 369), narrow) == new Rectangle(1000, 100, 496, 369)
+                && UpdaterForm.KeepOnScreen(new Rectangle(1000, 1700, 400, 369), narrow) == new Rectangle(1000, 1551, 400, 369)
+                && UpdaterForm.KeepOnScreen(new Rectangle(1010, 20, 300, 200), narrow) == new Rectangle(1010, 20, 300, 200),
+                "A window wider or taller than the room left on a narrow display is moved back on screen, left edge first");
+            string verifyFolder = Path.Combine(Path.GetTempPath(), "DlbVerifyRelease-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(verifyFolder);
+            try
+            {
+                string setup = Path.Combine(verifyFolder, "DLB-Precision-Monitor-0.1.9-Setup.exe");
+                File.WriteAllText(setup, "MZ not a real setup");
+                File.WriteAllText(setup + ".sha256", new string('0', 64) + "  DLB-Precision-Monitor-0.1.9-Setup.exe\n");
+                string verifyReport = Path.Combine(verifyFolder, "report.txt");
+                verify(VerifyForRelease(setup, "0.1.9", verifyReport, testBuild: false) == 2 && File.ReadAllText(verifyReport).StartsWith("REJECTED"),
+                    "The release check reports a refused setup with exit code 2");
+                int crashed;
+                using (new FileStream(setup, FileMode.Open, FileAccess.Read, FileShare.None))
+                    crashed = VerifyForRelease(setup, "0.1.9", verifyReport, testBuild: false);
+                verify(crashed == 3 && File.ReadAllText(verifyReport).StartsWith("ERROR"),
+                    "A release check that cannot read the setup reports its own error (exit 3) instead of blaming the setup or showing a window");
+                verify(VerifyForRelease(setup, "0.1.9", Path.Combine(verifyFolder, "missing", "report.txt"), testBuild: false) == 3,
+                    "A release check that cannot write its report still exits without showing a window");
+            }
+            finally { Directory.Delete(verifyFolder, true); }
 
             using (UpdaterForm form = OffscreenForm())
             {
