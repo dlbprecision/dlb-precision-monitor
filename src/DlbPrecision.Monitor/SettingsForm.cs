@@ -47,8 +47,12 @@ namespace DlbPrecision.Monitor
         public SettingsForm(MonitorSettings current, SensorSnapshot? snapshot, string diagnostics, float widgetDpiScale = 1f)
         {
             settings = current.Clone();
+            // The layout below is in 96-DPI pixels. Declaring that, and scaling once after every control is
+            // added, makes Windows display scaling enlarge the boxes along with the point-size text.
+            SuspendLayout();
             Text = "DLB Precision Monitor · Settings";
             AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleDimensions = new SizeF(96F, 96F);
             Font = bodyFont;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
@@ -157,6 +161,7 @@ namespace DlbPrecision.Monitor
             close.Click += (sender, args) => Close();
             Controls.Add(apply); Controls.Add(close);
             AcceptButton = apply; CancelButton = close;
+            ResumeLayout(false);
         }
 
         private static readonly Color WarningColor = Color.FromArgb(245, 169, 179);

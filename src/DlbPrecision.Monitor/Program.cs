@@ -156,6 +156,44 @@ namespace DlbPrecision.Monitor
             }
         }
 
+        // What Windows does to a 96-DPI layout on a scaled display: boxes grow by the scale, and
+        // point-size fonts grow with it.
+        private static void SimulateDisplayScale(Form form, float scale)
+        {
+            var explicitFonts = new List<KeyValuePair<Control, Font>>();
+            var pending = new Stack<Control>(form.Controls.Cast<Control>());
+            while (pending.Count > 0)
+            {
+                Control control = pending.Pop();
+                foreach (Control child in control.Controls) pending.Push(child);
+                if (control.Parent != null && !control.Font.Equals(control.Parent.Font)) explicitFonts.Add(new KeyValuePair<Control, Font>(control, control.Font));
+            }
+            form.Font = new Font(form.Font.FontFamily, form.Font.Size * scale, form.Font.Style);
+            foreach (KeyValuePair<Control, Font> item in explicitFonts)
+                item.Key.Font = new Font(item.Value.FontFamily, item.Value.Size * scale, item.Value.Style);
+            form.Scale(new SizeF(scale, scale));
+            form.PerformLayout();
+        }
+
+        private static List<string> ClippedText(Control root, float scale)
+        {
+            var clipped = new List<string>();
+            var pending = new Stack<Control>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                Control control = pending.Pop();
+                foreach (Control child in control.Controls) pending.Push(child);
+                if (!(control is Label || control is CheckBox || control is Button) || control.Text.Length == 0 || !control.Visible || control.AutoSize) continue;
+                int glyph = control is CheckBox ? (int)Math.Ceiling(20 * scale) : control is Button ? 10 : 0;
+                Size wrapped = TextRenderer.MeasureText(control.Text, control.Font, new Size(control.Width - glyph, 0), TextFormatFlags.WordBreak);
+                Size line = TextRenderer.MeasureText(control.Text, control.Font);
+                if (wrapped.Height > control.Height || (control is Button && line.Width + glyph > control.Width))
+                    clipped.Add("'" + control.Text + "' box " + control.Size + " needs " + line.Width + "x" + wrapped.Height);
+            }
+            return clipped;
+        }
+
         private static void RunSmokeTests(string? reportPath)
         {
             var results = new List<string>();
@@ -295,6 +333,24 @@ namespace DlbPrecision.Monitor
                 verify(checks == 1, "Check for updates in Settings asks the widget to start the updater once");
                 ((Button)updateForm.Controls["CloseSettings"]).PerformClick();
             }
+            foreach (float scale in new[] { 1f, 1.25f, 1.5f, 2f })
+                using (var scaled = new SettingsForm(new MonitorSettings(), SampleSnapshot(), "Display scaling regression; nothing is applied. A second line of sample sensor details."))
+                {
+                    verify(scaled.AutoScaleMode == AutoScaleMode.Dpi && scaled.AutoScaleDimensions == new SizeF(96F, 96F),
+                        "Settings is laid out at 96 DPI, so Windows display scaling enlarges its boxes along with its text");
+                    scaled.ShowInTaskbar = false;
+                    scaled.StartPosition = FormStartPosition.Manual;
+                    scaled.Location = new Point(-32000, -32000);
+                    scaled.Opacity = 0;
+                    scaled.Show();
+                    SimulateDisplayScale(scaled, scale);
+                    List<string> clipped = ClippedText(scaled, scale);
+                    verify(clipped.Count == 0, "At " + scale * 100 + "% display scaling Settings shows all of its text"
+                        + (clipped.Count > 0 ? ": " + string.Join("; ", clipped) : ""));
+                    ((Button)scaled.Controls["CloseSettings"]).PerformClick();
+                }
+            using (ToolTip tip = MonitorForm.CreateTooltip())
+                verify(tip.ShowAlways, "The widget's sensor-details tooltip shows on hover even though the widget never takes focus");
             string updaterFolder = Path.Combine(Path.GetTempPath(), "DlbPrecisionUpdaterLaunch-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(updaterFolder);
             try

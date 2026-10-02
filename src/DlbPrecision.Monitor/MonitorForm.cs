@@ -26,7 +26,7 @@ namespace DlbPrecision.Monitor
         private readonly ToolStripMenuItem lockItem = new ToolStripMenuItem("Lock position and size");
         private readonly ToolStripMenuItem orientationItem = new ToolStripMenuItem("Use vertical layout");
         private readonly ToolStripMenuItem sensorItem = new ToolStripMenuItem("Connecting to sensor service…") { Enabled = false };
-        private readonly ToolTip tooltip = new ToolTip { InitialDelay = 600, AutoPopDelay = 20000 };
+        private readonly ToolTip tooltip = CreateTooltip();
         private SettingsForm? settingsForm;
         private string sensorStatus = "Connecting to sensors…";
         private string settingsWarning;
@@ -242,6 +242,10 @@ namespace DlbPrecision.Monitor
             if (settingsForm == null || settingsForm.IsDisposed) return;
             settingsForm.SyncWidgetState(settings.Vertical, settings.PositionLocked, WidgetSizing.GetPercent(settings.Vertical, Size, DpiScale));
         }
+
+        // The widget is never activated (it must not take focus from a game), and a standard tooltip
+        // only appears over an active window.
+        internal static ToolTip CreateTooltip() => new ToolTip { InitialDelay = 600, AutoPopDelay = 20000, ShowAlways = true };
 
         private void CheckForUpdates()
         {
