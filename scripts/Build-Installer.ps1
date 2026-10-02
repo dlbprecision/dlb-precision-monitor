@@ -53,7 +53,8 @@ if ($Sign) {
     $dirty = @(& git -C $repoRoot status --porcelain -- src installer scripts tests Directory.Build.props)
     if ($LASTEXITCODE -ne 0) { throw 'git status failed; signed builds must be made from a git checkout.' }
     if ($dirty.Count -gt 0) { throw ("Signed builds must come from committed source. Commit or discard these first:`n" + ($dirty -join "`n")) }
-    Write-Host ('Signed build from commit ' + (& git -C $repoRoot rev-parse HEAD) + '. Release from this exact commit and merge it with a merge commit.')
+    $headCommit = ([string](& git -C $repoRoot rev-parse HEAD)).Trim()
+    Write-Host ('Signed build from commit ' + $headCommit + '. Release from this exact commit and merge it with a merge commit.')
     $SignToolPath = (Get-Item -LiteralPath $SignToolPath).FullName
     $DlibPath = (Get-Item -LiteralPath $DlibPath).FullName
     $SigningMetadataPath = (Get-Item -LiteralPath $SigningMetadataPath).FullName
@@ -128,6 +129,10 @@ foreach ($project in $projects) {
     foreach ($binary in (Get-ChildItem -LiteralPath $project.Output -File | Where-Object { $_.Name -match '^DlbPrecision\.(Monitor|Service|Shared|Sensors|Updater)\.(exe|dll)$' })) {
         if ($binary.VersionInfo.FileVersion -ne $expectedFileVersion) {
             throw "Build output version mismatch for $($binary.Name): expected $expectedFileVersion, found $($binary.VersionInfo.FileVersion). Rebuild without -SkipBuild."
+        }
+        # Also catches -SkipBuild reusing outputs built from other, possibly uncommitted, source.
+        if ($Sign -and -not ([string]$binary.VersionInfo.ProductVersion).EndsWith('+' + $headCommit)) {
+            throw "$($binary.Name) was built from other source ($($binary.VersionInfo.ProductVersion)), not commit $headCommit. Rebuild without -SkipBuild."
         }
     }
 }

@@ -28,8 +28,9 @@ monitor open, the update waits, because Windows can't close another user's
 program: close it there (or sign that user out), then choose **Try again**.
 
 On **v0.1.8**, the update window can open hidden behind Settings. If nothing
-seems to happen after **Check for updates…** in Settings, close Settings, or use
-**Check for updates…** in the right-click menu instead. If v0.1.8 reports that
+seems to happen after **Check for updates…** in Settings, close Settings: the
+update window is behind it. (Next time, close Settings first or use the
+right-click menu.) If v0.1.8 reports that
 the update "didn't finish (code 21)", the update is installed but the sensor
 service needs a Windows restart.
 
@@ -131,7 +132,10 @@ these rules is silently never offered, so follow this list every time:
    so they sort below the next release and can never be offered as one. Never
    sign a throwaway build with a releasable three-part version.
 3. Create the tag **lowercase** `vX.Y.Z` (same X.Y.Z as `-Version`) on the
-   build commit, attach both build outputs under their exact names,
+   build commit from git first, `git tag -a vX.Y.Z <commit the build printed>`
+   then `git push origin <branch> vX.Y.Z`, and choose that existing tag in
+   GitHub's release form (left to itself, the form tags the default branch).
+   Attach both build outputs under their exact names,
    `DLB-Precision-Monitor-X.Y.Z-Setup.exe` and
    `DLB-Precision-Monitor-X.Y.Z-Setup.exe.sha256` (setup under 64 MiB), and
    publish it as a **pre-release** first. Publish before merging a README that
@@ -157,9 +161,12 @@ these rules is silently never offered, so follow this list every time:
    `-Feed` and `-AsIfLatest`. Each run must print two PASS lines (offered, and
    verified after a real download). "You're up to date" in the window is not a
    go-live check.
-7. To pull a release back, mark the **previous good release** as Latest rather
-   than only marking the bad one as a pre-release. With no Latest release at
-   all, v0.1.9 and later report an error on every check.
+7. To pull a release back, make the **previous good release** Latest rather
+   than only marking the bad one as a pre-release: edit it, untick **Set as a
+   pre-release** (a pre-release can't be Latest), tick **Set as the latest
+   release** and save. Check that `/releases/latest` now returns it, and point
+   the README download link back to it. With no Latest release at all, v0.1.9
+   and later report an error on every check.
 
 `DlbPrecision.Updater.exe --render-preview <folder>` saves pictures of each
 updater screen.

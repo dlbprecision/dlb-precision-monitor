@@ -1,7 +1,8 @@
 [CmdletBinding()]
 param(
-    # The updater whose rules customers' PCs are running. Use the previous release's updater
-    # (installed, or from its signed build's stage folder), not the one being released.
+    # The updater whose rules customers' PCs are running: a released updater, from the stage-*\app folder of
+    # the signed build whose setup SHA256 matches that release's published .sha256. Never the one being
+    # released, and not a test build that happens to be installed.
     [string]$Updater = (Join-Path $env:ProgramFiles 'DLB Precision Monitor\DlbPrecision.Updater.exe'),
     [Parameter(Mandatory)][ValidatePattern('^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,5}$')][string]$ExpectVersion,
     # The version those PCs have installed; defaults to the updater file's own version.
@@ -30,11 +31,16 @@ try {
     $verifierType = $assembly.GetType('DlbPrecision.Updater.PackageVerifier', $true)
     $source = if ($Feed) { $Feed } else { [string]$feedType.GetField('LatestUrl', $any).GetValue($null) }
     $prefix = [string]$feedType.GetField('DownloadPrefix', $any).GetValue($null)
-    Write-Host ("Rules from updater {0}; installed version assumed {1}" -f (Get-Item -LiteralPath $Updater).VersionInfo.FileVersion, $AssumeInstalled)
+    $updaterInfo = (Get-Item -LiteralPath $Updater).VersionInfo
+    Write-Host ("Rules from updater {0} (built from {1}, SHA256 {2}); installed version assumed {3}" -f $updaterInfo.FileVersion,
+        $updaterInfo.ProductVersion, (Get-FileHash -Algorithm SHA256 -LiteralPath $Updater).Hash.ToLowerInvariant(), $AssumeInstalled)
 
-    $updaterVersion = [Version](Get-Item -LiteralPath $Updater).VersionInfo.FileVersion
+    $updaterVersion = [Version]$updaterInfo.FileVersion
     if ($updaterVersion -ge [Version]($ExpectVersion + '.0')) {
         Write-Warning "This updater is already version $updaterVersion. Customers run older updaters; pass the previous release's DlbPrecision.Updater.exe (from its signed build's stage-*\app folder)."
+    }
+    if ($updaterVersion.Revision -gt 0) {
+        Write-Warning "This updater is a test build ($updaterVersion), not a released one, so its rules may not be what customers run."
     }
     $fetched = $feedType.GetMethod('Fetch', $any).Invoke($null, [object[]]@([string]$source, 'DLB-release-check'))
     if ([string]$fetched.Status -ne 'Release') { throw "FAIL: the feed returned $($fetched.Status): $($fetched.Message)" }
