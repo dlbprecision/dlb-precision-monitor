@@ -249,6 +249,7 @@ namespace DlbPrecision.Monitor
 
         private void CheckForUpdates()
         {
+            if (settingsForm != null && !settingsForm.IsDisposed) settingsForm.MakeRoomForUpdater();
             string? problem = UpdateLauncher.Start(Path.GetDirectoryName(Application.ExecutablePath), info => { using (Process.Start(info)) { } });
             if (problem == null) return;
             tray.BalloonTipTitle = "Check for updates";

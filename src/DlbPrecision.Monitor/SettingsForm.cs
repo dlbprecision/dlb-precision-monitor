@@ -132,7 +132,7 @@ namespace DlbPrecision.Monitor
             content.Controls.Add(new Label { Name = "VersionText", Text = "Version " + AppVersion.Display, Location = new Point(26, 562), Size = new Size(139, 23) });
             var checkForUpdates = new Button { Name = "CheckForUpdates", Text = "Check for updates…", FlatStyle = FlatStyle.Flat };
             checkForUpdates.SetBounds(171, 555, 180, 32);
-            checkForUpdates.Click += (sender, args) => CheckForUpdates?.Invoke();
+            checkForUpdates.Click += (sender, args) => { MakeRoomForUpdater(); CheckForUpdates?.Invoke(); };
             content.Controls.Add(checkForUpdates);
 
             var diagnosticsLabel = new Label
@@ -167,6 +167,13 @@ namespace DlbPrecision.Monitor
         }
 
         private static readonly Color WarningColor = Color.FromArgb(245, 169, 179);
+
+        // The updater opens centred on the same screen. An always-on-top Settings window would cover it, and
+        // the setup log it can open, so Settings steps back into the normal window order (without taking focus).
+        public void MakeRoomForUpdater()
+        {
+            if (IsHandleCreated) NativeMethods.SetAlwaysOnTop(Handle, false);
+        }
 
         // The widget's right-click menu can change layout and locking while Settings is open;
         // reflect that here so a later Apply does not quietly undo it.

@@ -346,6 +346,7 @@ namespace DlbPrecision.Monitor
                 updateForm.StartPosition = FormStartPosition.Manual;
                 updateForm.Location = new Point(-32000, -32000);
                 updateForm.Opacity = 0;
+                updateForm.TopMost = true;
                 updateForm.Show();
                 int checks = 0;
                 updateForm.CheckForUpdates = () => checks++;
@@ -353,6 +354,8 @@ namespace DlbPrecision.Monitor
                     "Settings shows the installed version");
                 ((Button)updateForm.Controls.Find("CheckForUpdates", true).Single()).PerformClick();
                 verify(checks == 1, "Check for updates in Settings asks the widget to start the updater once");
+                verify(!NativeMethods.IsAlwaysOnTop(updateForm.Handle),
+                    "Settings stops being always on top when it starts the updater, so it can't cover the update window or the setup log");
                 ((Button)updateForm.Controls["CloseSettings"]).PerformClick();
             }
             // WinForms' own scaling, as on a PC whose main display is set to 150%.

@@ -46,6 +46,8 @@ namespace DlbPrecision.Monitor
 
         // Changes stay-on-top without activating the window; only acts when the state differs, so the
         // widget's place among other windows is not disturbed.
+        public static bool IsAlwaysOnTop(IntPtr handle) => (GetWindowLong(handle, GwlExStyle) & WsExTopmost) != 0;
+
         public static void SetAlwaysOnTop(IntPtr handle, bool alwaysOnTop)
         {
             bool current = (GetWindowLong(handle, GwlExStyle) & WsExTopmost) != 0;
