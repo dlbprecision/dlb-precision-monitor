@@ -32,6 +32,8 @@ namespace DlbPrecision.Updater
     {
         public string? SignerCommonName { get; set; }
         public string? SignerOrganization { get; set; }
+        public string? SignerState { get; set; }
+        public string? SignerCountry { get; set; }
         public List<string> ChainCommonNames { get; set; } = new List<string>();
         public bool CodeSigning { get; set; }
         public bool Timestamped { get; set; }
@@ -44,6 +46,10 @@ namespace DlbPrecision.Updater
     internal static class PublisherPolicy
     {
         public const string Publisher = "DLB Precision, LLC";
+        // A company name is unique only within the state that registered it, so the state and country
+        // identify DLB's own validated identity, not just a business with the same name.
+        public const string PublisherState = "Arkansas";
+        public const string PublisherCountry = "US";
         // Artifact Signing issues DLB's short-lived certificates under this root (valid until 2045). The
         // root is pinned rather than the leaf, which changes every few days.
         public const string MicrosoftIdentityRoot = "Microsoft Identity Verification Root Certificate Authority 2020";
@@ -56,6 +62,10 @@ namespace DlbPrecision.Updater
             if (!string.Equals(facts.SignerCommonName, Publisher, StringComparison.Ordinal)
                 || !string.Equals(facts.SignerOrganization, Publisher, StringComparison.Ordinal))
                 return "The download is signed by another publisher (" + (facts.SignerCommonName ?? "unknown") + "), not " + Publisher + ".";
+            if (!string.Equals(facts.SignerState, PublisherState, StringComparison.Ordinal)
+                || !string.Equals(facts.SignerCountry, PublisherCountry, StringComparison.Ordinal))
+                return "The download is signed by a " + Publisher + " registered in " + (facts.SignerState ?? "an unknown state") + ", "
+                    + (facts.SignerCountry ?? "unknown country") + ", not DLB's own (" + PublisherState + ", " + PublisherCountry + ").";
             // A name alone proves nothing: the chain must be one Windows trusts, ending at the pinned root.
             if (!facts.ChainTrusted || facts.ChainCommonNames.LastOrDefault() != MicrosoftIdentityRoot
                 || !string.Equals(facts.RootThumbprint, MicrosoftIdentityRootThumbprint, StringComparison.OrdinalIgnoreCase))
@@ -85,6 +95,10 @@ namespace DlbPrecision.Updater
 
     internal static class PackageVerifier
     {
+        // Set by DLB's installer script (VersionInfoDescription / VersionInfoProductName). They tell the setup
+        // apart from DLB's other signed files, such as the uninstaller, which carry the same version.
+        public const string SetupDescription = "DLB Precision Monitor Setup";
+        public const string ProductName = "DLB Precision Monitor";
         private const string CodeSigningUsage = "1.3.6.1.5.5.7.3.3";
         private const string Rfc3161Timestamp = "1.3.6.1.4.1.311.3.3.1";
         private const string LegacyCounterSignature = "1.2.840.113549.1.9.6";
@@ -112,10 +126,35 @@ namespace DlbPrecision.Updater
             string? refusal = PublisherPolicy.Evaluate(facts);
             if (refusal != null) return VerificationResult.Rejected(refusal);
 
-            string product = FileVersionInfo.GetVersionInfo(path).ProductVersion?.Trim() ?? "";
+            FileVersionInfo info = FileVersionInfo.GetVersionInfo(path);
+            if (!string.Equals(info.FileDescription?.Trim(), SetupDescription, StringComparison.Ordinal)
+                || !string.Equals(info.ProductName?.Trim(), ProductName, StringComparison.Ordinal))
+                return VerificationResult.Rejected("The download is not the DLB Precision Monitor setup (it is \"" + (info.FileDescription?.Trim() ?? "") + "\"), so it wasn't installed.");
+            string product = info.ProductVersion?.Trim() ?? "";
             if (!string.Equals(product, expectedProductVersion, StringComparison.Ordinal))
                 return VerificationResult.Rejected("The download is version " + (product.Length > 0 ? product : "unknown") + ", not " + expectedProductVersion + ".");
             return VerificationResult.Accepted();
+        }
+
+        // The release build runs this on the signed setup and its checksum file, so a release that every
+        // installed updater would refuse is caught before it is published.
+        public static VerificationResult VerifyPackage(string setupPath, string version, bool testBuild = false)
+        {
+            string expectedName = UpdateOffer.InstallerName(version);
+            if (!testBuild && !UpdateOffer.TryParseTag("v" + version, out _))
+                return VerificationResult.Rejected("Version " + version + " can never be offered: release versions are MAJOR.MINOR.PATCH.");
+            if (!string.Equals(Path.GetFileName(setupPath), expectedName, StringComparison.Ordinal))
+                return VerificationResult.Rejected("For version " + version + " the setup must be named " + expectedName + ".");
+            var setup = new FileInfo(setupPath);
+            if (!setup.Exists || setup.Length > Downloader.MaximumBytes)
+                return VerificationResult.Rejected("The setup is missing or larger than the updater accepts (" + Downloader.MaximumBytes + " bytes).");
+            string checksumPath = setupPath + ".sha256";
+            if (!File.Exists(checksumPath)) return VerificationResult.Rejected("The setup's checksum file " + expectedName + ".sha256 is missing.");
+            if (new FileInfo(checksumPath).Length > ChecksumFile.MaximumBytes
+                || !ChecksumFile.TryParse(File.ReadAllText(checksumPath), expectedName, out string expected))
+                return VerificationResult.Rejected("The setup's checksum file couldn't be read.");
+            using (var package = new FileStream(setupPath, FileMode.Open, FileAccess.Read, FileShare.Read))
+                return Verify(package, setupPath, expected, version);
         }
 
         private static SignatureFacts? ReadSignatureFacts(Stream package)
@@ -137,7 +176,9 @@ namespace DlbPrecision.Updater
                     SingleSigner = cms.SignerInfos.Count == 1,
                     SignatureValid = SignatureChecks(signer),
                     SignerCommonName = certificate.GetNameInfo(X509NameType.SimpleName, false),
-                    SignerOrganization = Organization(certificate),
+                    SignerOrganization = SubjectValue(certificate, "O"),
+                    SignerState = SubjectValue(certificate, "S"),
+                    SignerCountry = SubjectValue(certificate, "C"),
                     CodeSigning = certificate.Extensions.OfType<X509EnhancedKeyUsageExtension>()
                         .Any(usage => usage.EnhancedKeyUsages.Cast<Oid>().Any(oid => oid.Value == CodeSigningUsage)),
                     Timestamped = signer.UnsignedAttributes.Cast<CryptographicAttributeObject>()
@@ -177,13 +218,13 @@ namespace DlbPrecision.Updater
             }
         }
 
-        private static string? Organization(X509Certificate2 certificate)
+        private static string? SubjectValue(X509Certificate2 certificate, string key)
         {
             // One RDN per line keeps a quoted "DLB Precision, LLC" intact.
             foreach (string line in certificate.SubjectName.Decode(X500DistinguishedNameFlags.UseNewLines).Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
             {
-                if (!line.StartsWith("O=", StringComparison.Ordinal)) continue;
-                string value = line.Substring(2).Trim();
+                if (!line.StartsWith(key + "=", StringComparison.Ordinal)) continue;
+                string value = line.Substring(key.Length + 1).Trim();
                 if (value.Length >= 2 && value[0] == '"' && value[value.Length - 1] == '"') value = value.Substring(1, value.Length - 2).Replace("\"\"", "\"");
                 return value;
             }

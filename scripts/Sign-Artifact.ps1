@@ -34,6 +34,20 @@ function Assert-ArtifactSignature {
     if (-not [string]::Equals($publisher, $ExpectedPublisher, [StringComparison]::Ordinal)) {
         throw "Unexpected certificate publisher on $FilePath. Expected an exact match for the configured publisher."
     }
+    # The in-app updater requires the organization as well as the common name; match it here.
+    $organization = $null
+    $subject = $signature.SignerCertificate.SubjectName.Decode([Security.Cryptography.X509Certificates.X500DistinguishedNameFlags]::UseNewLines)
+    foreach ($line in ($subject -split "`r?`n")) {
+        if ($line.StartsWith('O=', [StringComparison]::Ordinal)) {
+            $organization = $line.Substring(2).Trim()
+            if ($organization.Length -ge 2 -and $organization.StartsWith('"') -and $organization.EndsWith('"')) {
+                $organization = $organization.Substring(1, $organization.Length - 2).Replace('""', '"')
+            }
+        }
+    }
+    if (-not [string]::Equals($organization, $ExpectedPublisher, [StringComparison]::Ordinal)) {
+        throw "Unexpected certificate organization on $FilePath. The in-app updater requires O to equal the publisher name."
+    }
 }
 
 try {

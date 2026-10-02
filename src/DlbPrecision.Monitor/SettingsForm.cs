@@ -34,8 +34,10 @@ namespace DlbPrecision.Monitor
         private readonly TextBox shortcut = new TextBox { ReadOnly = true };
         private readonly Label validation = new Label();
         private readonly ToolTip diagnosticsTip = new ToolTip { AutoPopDelay = 30000 };
-        private readonly Font bodyFont = new Font("Segoe UI", 9f);
-        private readonly Font titleFont = new Font("Segoe UI Semibold", 17);
+        private readonly Font bodyFont = new Font("Segoe UI", BodyPoints);
+        private const float BodyPoints = 9f, TitlePoints = 17f;
+        private Font titleFont = new Font("Segoe UI Semibold", TitlePoints);
+        private readonly Label title;
         private bool ownedResourcesDisposed;
         private uint shortcutModifiers;
         private int shortcutKey;
@@ -47,8 +49,12 @@ namespace DlbPrecision.Monitor
         public SettingsForm(MonitorSettings current, SensorSnapshot? snapshot, string diagnostics, float widgetDpiScale = 1f)
         {
             settings = current.Clone();
+            // The layout below is in 96-DPI pixels. Declaring that, and scaling once after every control is
+            // added, makes Windows display scaling enlarge the boxes along with the point-size text.
+            SuspendLayout();
             Text = "DLB Precision Monitor · Settings";
             AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScaleDimensions = new SizeF(96F, 96F);
             Font = bodyFont;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             StartPosition = FormStartPosition.CenterScreen;
@@ -63,7 +69,7 @@ namespace DlbPrecision.Monitor
             content.AutoScrollMinSize = new Size(0, 661);
             Controls.Add(content);
 
-            var title = new Label { Text = "Make it yours.", Font = titleFont, AutoSize = true, Location = new Point(24, 20) };
+            title = new Label { Name = "SettingsTitle", Text = "Make it yours.", Font = titleFont, AutoSize = true, Location = new Point(24, 20) };
             var intro = new Label { Text = "Right-click the widget or use its tray icon to return here.", AutoSize = true, ForeColor = Color.FromArgb(163, 158, 178), Location = new Point(26, 57) };
             content.Controls.Add(title); content.Controls.Add(intro);
 
@@ -126,7 +132,7 @@ namespace DlbPrecision.Monitor
             content.Controls.Add(new Label { Name = "VersionText", Text = "Version " + AppVersion.Display, Location = new Point(26, 562), Size = new Size(139, 23) });
             var checkForUpdates = new Button { Name = "CheckForUpdates", Text = "Check for updates…", FlatStyle = FlatStyle.Flat };
             checkForUpdates.SetBounds(171, 555, 180, 32);
-            checkForUpdates.Click += (sender, args) => CheckForUpdates?.Invoke();
+            checkForUpdates.Click += (sender, args) => { MakeRoomForUpdater(); CheckForUpdates?.Invoke(); };
             content.Controls.Add(checkForUpdates);
 
             var diagnosticsLabel = new Label
@@ -157,9 +163,17 @@ namespace DlbPrecision.Monitor
             close.Click += (sender, args) => Close();
             Controls.Add(apply); Controls.Add(close);
             AcceptButton = apply; CancelButton = close;
+            ResumeLayout(false);
         }
 
         private static readonly Color WarningColor = Color.FromArgb(245, 169, 179);
+
+        // The updater opens centred on the same screen. An always-on-top Settings window would cover it, and
+        // the setup log it can open, so Settings steps back into the normal window order (without taking focus).
+        public void MakeRoomForUpdater()
+        {
+            if (IsHandleCreated) NativeMethods.SetAlwaysOnTop(Handle, false);
+        }
 
         // The widget's right-click menu can change layout and locking while Settings is open;
         // reflect that here so a later Apply does not quietly undo it.
@@ -220,6 +234,19 @@ namespace DlbPrecision.Monitor
             private string Name { get; }
             public GpuChoice(string id, string name) { Id = id; Name = name; }
             public override string ToString() => Name;
+        }
+
+        // WinForms rescales the window's own text when it moves to a display with different scaling; keep
+        // the heading in proportion to it so it never overlaps the line below.
+        protected override void OnDpiChanged(DpiChangedEventArgs args)
+        {
+            base.OnDpiChanged(args);
+            float points = Font.SizeInPoints * TitlePoints / BodyPoints;
+            if (Math.Abs(title.Font.SizeInPoints - points) < 0.01f) return;
+            Font previous = titleFont;
+            titleFont = new Font("Segoe UI Semibold", points);
+            title.Font = titleFont;
+            previous.Dispose();
         }
 
         protected override void OnLoad(EventArgs args)

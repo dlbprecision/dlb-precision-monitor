@@ -5,7 +5,7 @@
   #define OutputDir "..\artifacts\installer"
 #endif
 #ifndef AppVersion
-  #define AppVersion "0.1.8"
+  #define AppVersion "0.1.9"
 #endif
 #ifdef SignRelease
   #define InstallationNotes "SIGNED-INSTALLATION-NOTES.txt"
@@ -19,6 +19,9 @@ AppName=DLB Precision Monitor
 AppVersion={#AppVersion}
 AppPublisher=DLBPrecision
 AppPublisherURL=https://www.dlbprecision.com/
+; In-app updates accept only a file that names itself as this setup. Do not change these two values.
+VersionInfoDescription=DLB Precision Monitor Setup
+VersionInfoProductName=DLB Precision Monitor
 DefaultDirName={autopf}\DLB Precision Monitor
 DisableDirPage=yes
 UsePreviousAppDir=no
@@ -109,6 +112,7 @@ var
   PawnIORebootRequired: Boolean;
   ServiceStoppedForUpgrade: Boolean;
   StartupFailed: Boolean;
+  ServiceFailed: Boolean;
 
 function NamedServiceState(Name: String): Cardinal;
 var
@@ -268,25 +272,42 @@ begin
   if (Result <> '') and PawnIORebootRequired then NeedsRestart := True;
 end;
 
-procedure CurStepChanged(CurStep: TSetupStep);
+{ Returns '' on success, or the reason the sensor service could not be set up. }
+function ConfigureSensorService: String;
 var
   Arguments: String;
   ExitCode: Integer;
 begin
+  Result := '';
+  Arguments := SensorService + ' binPath= "\"' + ExpandConstant('{app}\DlbPrecision.Service.exe') +
+    '\"" start= auto obj= LocalSystem DisplayName= "DLB Precision Sensors"';
+  if ServiceState = 0 then ExitCode := RunSC('create ' + Arguments)
+  else ExitCode := RunSC('config ' + Arguments);
+  if ExitCode <> 0 then begin Result := 'Unable to register the sensor service. See the setup log.'; Exit; end;
+  if RunSC('description ' + SensorService + ' "Supplies local hardware readings to DLB Precision Monitor. Idle when no monitor is connected."') <> 0 then begin
+    Result := 'Unable to configure the sensor service description.'; Exit; end;
+  if RunSC('failure ' + SensorService + ' reset= 86400 actions= restart/5000/restart/15000/restart/60000') <> 0 then begin
+    Result := 'Unable to configure sensor service recovery.'; Exit; end;
+  ExitCode := RunSC('start ' + SensorService);
+  if ((ExitCode <> 0) and (ExitCode <> 1056)) or not WaitForService(SERVICE_RUNNING) then
+    Result := 'The sensor service could not start. See the setup log; a Windows restart may be required.';
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var
+  ExitCode: Integer;
+  ServiceProblem: String;
+begin
   if CurStep = ssPostInstall then begin
-    Arguments := SensorService + ' binPath= "\"' + ExpandConstant('{app}\DlbPrecision.Service.exe') +
-      '\"" start= auto obj= LocalSystem DisplayName= "DLB Precision Sensors"';
-    if ServiceState = 0 then ExitCode := RunSC('create ' + Arguments)
-    else ExitCode := RunSC('config ' + Arguments);
-    if ExitCode <> 0 then RaiseException('Unable to register the sensor service. See the setup log.');
-    if RunSC('description ' + SensorService + ' "Supplies local hardware readings to DLB Precision Monitor. Idle when no monitor is connected."') <> 0 then
-      RaiseException('Unable to configure the sensor service description.');
-    if RunSC('failure ' + SensorService + ' reset= 86400 actions= restart/5000/restart/15000/restart/60000') <> 0 then
-      RaiseException('Unable to configure sensor service recovery.');
-    ExitCode := RunSC('start ' + SensorService);
-    if ((ExitCode <> 0) and (ExitCode <> 1056)) or not WaitForService(SERVICE_RUNNING) then
-      RaiseException('The sensor service could not start. See the setup log; a Windows restart may be required.');
-    ServiceStoppedForUpgrade := False;
+    { Reported through exit code 21 rather than an exception: Inno treats an exception here as
+      non-fatal and would still exit 0, so an in-app update would claim a clean success. }
+    ServiceProblem := ConfigureSensorService;
+    if ServiceProblem <> '' then begin
+      ServiceFailed := True;
+      Log(ServiceProblem);
+      SuppressibleMsgBox(ServiceProblem, mbCriticalError, MB_OK, IDOK);
+    end else
+      ServiceStoppedForUpgrade := False;
     if WizardIsTaskSelected('startup') then begin
       StartupFailed := not ExecAsOriginalUser(ExpandConstant('{app}\DlbPrecision.Monitor.exe'),
         '--enable-startup', ExpandConstant('{app}'), SW_HIDE, ewWaitUntilTerminated, ExitCode);
@@ -299,6 +320,9 @@ end;
 
 procedure CurPageChanged(CurPageID: Integer);
 begin
+  if (CurPageID = wpFinished) and ServiceFailed then
+    WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
+      'The DLB sensor service did not start, so readings may be missing. Restart Windows; if readings are still missing, send DLB the setup log.';
   if (CurPageID = wpFinished) and StartupFailed then
     WizardForm.FinishedLabel.Caption := WizardForm.FinishedLabel.Caption + #13#10#13#10 +
       'Launch at sign-in was not enabled. Open DLB Precision Monitor from your Start menu as your normal user, then enable it in Settings. This can occur when setup is started from an already elevated administrator session.';
@@ -312,8 +336,9 @@ end;
 function GetCustomSetupExitCode: Integer;
 begin
   Result := 0;
-  { Core files/service are installed; report incomplete optional user configuration to deployers. }
-  if StartupFailed then Result := 20;
+  { Core files are installed; report what is incomplete to deployers and the in-app updater. }
+  if ServiceFailed then Result := 21
+  else if StartupFailed then Result := 20;
 end;
 
 function NeedRestart: Boolean;

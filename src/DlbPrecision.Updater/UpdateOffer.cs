@@ -80,13 +80,21 @@ namespace DlbPrecision.Updater
                 return UpdateDecision.NotAvailable();
 
             string title = release.Name.Length > 0 ? release.Name : "DLB Precision Monitor " + versionText;
-            return UpdateDecision.Available(new UpdateOffer(version, title, PlainText.FromMarkdown(release.Body), installer, checksum));
+            return UpdateDecision.Available(new UpdateOffer(version, title, PlainText.FromMarkdown(release.Body, title: title), installer, checksum));
         }
 
         // Compared after parsing, as the downloader will use it, so "../" segments cannot leave DLB's releases.
-        private static bool ExpectedDownload(ReleaseAsset asset, string prefix, string versionText) =>
-            Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? uri)
-            && string.Equals(uri.AbsoluteUri, prefix + "v" + versionText + "/" + asset.Name, StringComparison.Ordinal);
+        // GitHub ignores case in owner and repository names, and its replies use whatever case the account
+        // has now, so that part ignores case. The tag and file name are exact.
+        private static bool ExpectedDownload(ReleaseAsset asset, string prefix, string versionText)
+        {
+            if (!Uri.TryCreate(asset.DownloadUrl, UriKind.Absolute, out Uri? uri)) return false;
+            string actual = uri.AbsoluteUri;
+            string release = "v" + versionText + "/" + asset.Name;
+            return actual.Length == prefix.Length + release.Length
+                && string.Compare(actual, 0, prefix, 0, prefix.Length, StringComparison.OrdinalIgnoreCase) == 0
+                && string.CompareOrdinal(actual, prefix.Length, release, 0, release.Length) == 0;
+        }
 
         private static bool AllowedDownload(string url, bool allowFileUrls) =>
             Uri.TryCreate(url, UriKind.Absolute, out Uri? uri) && (uri.Scheme == Uri.UriSchemeHttps || (allowFileUrls && uri.IsFile && !uri.IsUnc));

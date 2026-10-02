@@ -6,6 +6,7 @@ using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Principal;
 using System.Text;
 using System.Threading;
@@ -156,6 +157,64 @@ namespace DlbPrecision.Monitor
             }
         }
 
+        // Test-only: sets the display DPI WinForms uses for windows created afterwards and returns the previous
+        // value. This is the cached value a scaled main display gives WinForms at startup.
+        private static int SetWindowsFormsSystemDpi(int dpi)
+        {
+            const BindingFlags any = BindingFlags.NonPublic | BindingFlags.Static;
+            Type helper = typeof(Form).Assembly.GetType("System.Windows.Forms.DpiHelper", true);
+            if (!(helper.GetProperty("EnableDpiChangedMessageHandling", any)?.GetValue(null) is bool perMonitor) || !perMonitor)
+                throw new InvalidOperationException("Per-monitor DPI handling is off; the app configuration was not loaded.");
+            int previous = (int)(helper.GetProperty("DeviceDpi", any)?.GetValue(null) ?? throw new InvalidOperationException("WinForms DPI not found."));
+            (helper.GetField("deviceDpi", any) ?? throw new InvalidOperationException("WinForms DPI field not found.")).SetValue(null, dpi);
+            return previous;
+        }
+
+        // What Windows sends a window that moves to a display with different scaling.
+        private static void SendDpiChange(Form form, int dpi)
+        {
+            float factor = dpi / (float)form.DeviceDpi;
+            NativeMethods.SendDpiChanged(form.Handle, dpi, new Rectangle(form.Left, form.Top, (int)(form.Width * factor), (int)(form.Height * factor)));
+        }
+
+        // What Windows does to a 96-DPI layout on a scaled display: boxes grow by the scale, and
+        // point-size fonts grow with it.
+        private static void SimulateDisplayScale(Form form, float scale)
+        {
+            var explicitFonts = new List<KeyValuePair<Control, Font>>();
+            var pending = new Stack<Control>(form.Controls.Cast<Control>());
+            while (pending.Count > 0)
+            {
+                Control control = pending.Pop();
+                foreach (Control child in control.Controls) pending.Push(child);
+                if (control.Parent != null && !control.Font.Equals(control.Parent.Font)) explicitFonts.Add(new KeyValuePair<Control, Font>(control, control.Font));
+            }
+            form.Font = new Font(form.Font.FontFamily, form.Font.Size * scale, form.Font.Style);
+            foreach (KeyValuePair<Control, Font> item in explicitFonts)
+                item.Key.Font = new Font(item.Value.FontFamily, item.Value.Size * scale, item.Value.Style);
+            form.Scale(new SizeF(scale, scale));
+            form.PerformLayout();
+        }
+
+        private static List<string> ClippedText(Control root, float scale)
+        {
+            var clipped = new List<string>();
+            var pending = new Stack<Control>();
+            pending.Push(root);
+            while (pending.Count > 0)
+            {
+                Control control = pending.Pop();
+                foreach (Control child in control.Controls) pending.Push(child);
+                if (!(control is Label || control is CheckBox || control is Button) || control.Text.Length == 0 || !control.Visible || control.AutoSize) continue;
+                int glyph = control is CheckBox ? (int)Math.Ceiling(20 * scale) : control is Button ? 10 : 0;
+                Size wrapped = TextRenderer.MeasureText(control.Text, control.Font, new Size(control.Width - glyph, 0), TextFormatFlags.WordBreak);
+                Size line = TextRenderer.MeasureText(control.Text, control.Font);
+                if (wrapped.Height > control.Height || (control is Button && line.Width + glyph > control.Width))
+                    clipped.Add("'" + control.Text + "' box " + control.Size + " needs " + line.Width + "x" + wrapped.Height);
+            }
+            return clipped;
+        }
+
         private static void RunSmokeTests(string? reportPath)
         {
             var results = new List<string>();
@@ -228,7 +287,8 @@ namespace DlbPrecision.Monitor
                 sizingForm.Location = new Point(-32000, -32000);
                 sizingForm.Opacity = 0;
                 sizingForm.Show();
-                sizingForm.ClientSize = new Size(490, 450);
+                float systemScale = sizingForm.DeviceDpi / 96f;
+                sizingForm.ClientSize = new Size((int)Math.Round(490 * systemScale), (int)Math.Round(450 * systemScale));
                 sizingForm.PerformLayout();
                 var settingsContent = (Panel)sizingForm.Controls["SettingsContent"];
                 verify(settingsContent.VerticalScroll.Visible && !settingsContent.HorizontalScroll.Visible && sizingForm.Controls["CloseSettings"].Bottom <= sizingForm.ClientSize.Height,
@@ -286,6 +346,7 @@ namespace DlbPrecision.Monitor
                 updateForm.StartPosition = FormStartPosition.Manual;
                 updateForm.Location = new Point(-32000, -32000);
                 updateForm.Opacity = 0;
+                updateForm.TopMost = true;
                 updateForm.Show();
                 int checks = 0;
                 updateForm.CheckForUpdates = () => checks++;
@@ -293,8 +354,55 @@ namespace DlbPrecision.Monitor
                     "Settings shows the installed version");
                 ((Button)updateForm.Controls.Find("CheckForUpdates", true).Single()).PerformClick();
                 verify(checks == 1, "Check for updates in Settings asks the widget to start the updater once");
+                verify(!NativeMethods.IsAlwaysOnTop(updateForm.Handle),
+                    "Settings stops being always on top when it starts the updater, so it can't cover the update window or the setup log");
                 ((Button)updateForm.Controls["CloseSettings"]).PerformClick();
             }
+            // WinForms' own scaling, as on a PC whose main display is set to 150%.
+            int realDpi = SetWindowsFormsSystemDpi(144);
+            try
+            {
+                using (var scaledByWindows = new SettingsForm(new MonitorSettings(), null, "Scaling regression; nothing is applied."))
+                {
+                    Control apply = scaledByWindows.Controls["ApplySettings"];
+                    verify(apply.Width == 156 && apply.Height == 51 && scaledByWindows.ClientSize.Width >= 734,
+                        "At 150% Windows display scaling Settings' boxes grow by 150% with its text (Apply " + apply.Size + ", window " + scaledByWindows.ClientSize + ")");
+                }
+            }
+            finally { SetWindowsFormsSystemDpi(realDpi); }
+            using (var moved = new SettingsForm(new MonitorSettings(), null, "Display-change regression; nothing is applied."))
+            {
+                moved.ShowInTaskbar = false;
+                moved.StartPosition = FormStartPosition.Manual;
+                moved.Location = new Point(-32000, -32000);
+                moved.Opacity = 0;
+                moved.Show();
+                Control heading = moved.Controls.Find("SettingsTitle", true).Single();
+                float before = heading.Font.SizeInPoints / moved.Font.SizeInPoints;
+                SendDpiChange(moved, moved.DeviceDpi * 3 / 2);
+                float after = heading.Font.SizeInPoints / moved.Font.SizeInPoints;
+                verify(moved.Font.SizeInPoints > 9.5f && Math.Abs(after - before) < 0.05f,
+                    "Moving Settings to a display with different scaling keeps its heading in proportion to its text (" + before.ToString("0.00") + " -> " + after.ToString("0.00") + ")");
+                ((Button)moved.Controls["CloseSettings"]).PerformClick();
+            }
+            foreach (float scale in new[] { 1f, 1.25f, 1.5f, 2f })
+                using (var scaled = new SettingsForm(new MonitorSettings(), SampleSnapshot(), "Display scaling regression; nothing is applied. A second line of sample sensor details."))
+                {
+                    verify(scaled.AutoScaleMode == AutoScaleMode.Dpi, "Settings scales with display DPI");
+                    scaled.ShowInTaskbar = false;
+                    scaled.StartPosition = FormStartPosition.Manual;
+                    scaled.Location = new Point(-32000, -32000);
+                    scaled.Opacity = 0;
+                    scaled.Show();
+                    // Relative to the scaling this PC already applied, so the check holds on scaled PCs too.
+                    SimulateDisplayScale(scaled, scale * 96f / scaled.DeviceDpi);
+                    List<string> clipped = ClippedText(scaled, scale);
+                    verify(clipped.Count == 0, "At " + scale * 100 + "% display scaling Settings shows all of its text"
+                        + (clipped.Count > 0 ? ": " + string.Join("; ", clipped) : ""));
+                    ((Button)scaled.Controls["CloseSettings"]).PerformClick();
+                }
+            using (ToolTip tip = MonitorForm.CreateTooltip())
+                verify(tip.ShowAlways, "The widget's sensor-details tooltip shows on hover even though the widget never takes focus");
             string updaterFolder = Path.Combine(Path.GetTempPath(), "DlbPrecisionUpdaterLaunch-" + Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(updaterFolder);
             try

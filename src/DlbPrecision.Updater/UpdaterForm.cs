@@ -43,19 +43,23 @@ namespace DlbPrecision.Updater
         private static readonly Color Blue = ColorTranslator.FromHtml("#2DA4F4");
         private static readonly Color Warning = Color.FromArgb(245, 169, 179);
         private static readonly string UserAgent = "DLBPrecisionMonitor-Updater/" + typeof(UpdaterForm).Assembly.GetName().Version.ToString(3);
+        // The layout below is drawn for Segoe UI 9.5 pt at 100% display scaling, which is 17 pixels tall.
+        private const float DesignFontHeight = 17f;
+        private const float BodyPoints = 9.5f, TitlePoints = 15f;
 
         private readonly string installDirectory;
         private readonly string? feed;
         private readonly string workingFolder;
         private readonly bool startCheck;
-        private readonly Font bodyFont = new Font("Segoe UI", 9.5f);
-        private readonly Font titleFont = new Font("Segoe UI Semibold", 15);
+        private readonly Font bodyFont = new Font("Segoe UI", BodyPoints);
+        private Font titleFont = new Font("Segoe UI Semibold", TitlePoints);
         private readonly Icon? windowIcon = LoadIcon();
+        private readonly Label title = new Label { Name = "Title", Text = "DLB Precision Monitor update", AutoSize = false };
         private readonly Label status = new Label { Name = "Status", AutoSize = false };
         private readonly TextBox notes = new TextBox { Name = "Notes", Multiline = true, ReadOnly = true, ScrollBars = ScrollBars.Vertical, BorderStyle = BorderStyle.FixedSingle };
         private readonly ProgressStrip progress = new ProgressStrip { Name = "Progress" };
         private readonly Label progressText = new Label { Name = "ProgressText", AutoSize = false };
-        private readonly LinkLabel details = new LinkLabel { Name = "Details", Text = "Show details", AutoSize = true };
+        private readonly LinkLabel details = new LinkLabel { Name = "Details", Text = "Show details", AutoSize = false };
         private readonly Button primary = new Button { Name = "Primary", FlatStyle = FlatStyle.Flat };
         private readonly Button secondary = new Button { Name = "Secondary", FlatStyle = FlatStyle.Flat };
         private readonly System.Windows.Forms.Timer closeTimer = new System.Windows.Forms.Timer { Interval = 4000 };
@@ -65,7 +69,13 @@ namespace DlbPrecision.Updater
         private UpdateOffer? offer;
         private string? keptLog;
         private bool installing;
+        private bool downloading;
+        private bool ready;
+        private bool arranging;
         private bool ownedResourcesDisposed;
+
+        // What Windows actually shows, which is what matters for being above other windows.
+        internal bool AlwaysOnTop => IsHandleCreated ? (NativeMethods.GetWindowLong(Handle, -20) & 0x8) != 0 : TopMost;
 
         public UpdaterForm(string installDirectory, string? feed, string workingFolder, bool startCheck = true)
         {
@@ -75,39 +85,37 @@ namespace DlbPrecision.Updater
             this.startCheck = startCheck;
             Text = WindowTitle;
             if (windowIcon != null) Icon = windowIcon;
-            AutoScaleMode = AutoScaleMode.Dpi;
+            // Arrange() sizes everything from the font, which Windows already scales for the display,
+            // so WinForms must not scale the bounds a second time.
+            AutoScaleMode = AutoScaleMode.None;
             Font = bodyFont;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = true;
             StartPosition = FormStartPosition.CenterScreen;
-            ClientSize = new Size(480, 330);
+            // A short window the person just asked for. Settings can be always on top, and the updater must
+            // never open hidden behind it.
+            TopMost = true;
             BackColor = Background;
             ForeColor = Foreground;
 
-            Controls.Add(new Label { Text = "DLB Precision Monitor update", Font = titleFont, AutoSize = true, Location = new Point(24, 18) });
-            status.SetBounds(26, 58, 430, 46);
-            notes.SetBounds(26, 108, 428, 150);
+            title.Font = titleFont;
             notes.BackColor = Color.FromArgb(17, 17, 22);
             notes.ForeColor = Foreground;
-            progress.SetBounds(26, 112, 428, 12);
             progress.BackColor = Color.FromArgb(53, 49, 63);
             progress.ForeColor = Blue;
-            progressText.SetBounds(26, 136, 428, 22);
             progressText.ForeColor = Muted;
-            details.SetBounds(26, 272, 120, 22);
             details.LinkColor = Blue;
             details.ActiveLinkColor = Blue;
             details.LinkClicked += (sender, args) => OpenLog();
-            primary.SetBounds(242, 276, 104, 34);
             primary.BackColor = Blue;
             primary.ForeColor = Color.FromArgb(10, 15, 22);
             primary.FlatAppearance.BorderSize = 0;
             primary.Click += (sender, args) => primaryAction?.Invoke();
-            secondary.SetBounds(356, 276, 102, 34);
             secondary.Click += (sender, args) => secondaryAction?.Invoke();
-            Controls.AddRange(new Control[] { status, notes, progress, progressText, details, primary, secondary });
+            Controls.AddRange(new Control[] { title, status, notes, progress, progressText, details, primary, secondary });
             closeTimer.Tick += (sender, args) => { closeTimer.Stop(); Close(); };
+            ready = true;
             ShowChecking();
         }
 
@@ -117,7 +125,17 @@ namespace DlbPrecision.Updater
         protected override void OnShown(EventArgs args)
         {
             base.OnShown(args);
+            if (WindowState == FormWindowState.Normal) Bounds = KeepOnScreen(Bounds, Screen.FromControl(this).WorkingArea);
             if (startCheck) StartCheck();
+        }
+
+        // Enter only ever runs the screen's main action. While checking, downloading or installing there is
+        // none, so Enter does nothing even if a button has keyboard focus: a repeated or stray Enter can't
+        // cancel a download or close the window.
+        protected override bool ProcessDialogKey(Keys keyData)
+        {
+            if (keyData == Keys.Enter && AcceptButton == null) return true;
+            return base.ProcessDialogKey(keyData);
         }
 
         protected override void OnFormClosing(FormClosingEventArgs args)
@@ -128,11 +146,24 @@ namespace DlbPrecision.Updater
             base.OnFormClosing(args);
         }
 
+        // Moving to a display with different scaling changes the font; everything else follows it.
+        protected override void OnFontChanged(EventArgs args)
+        {
+            base.OnFontChanged(args);
+            Arrange();
+        }
+
+        protected override void OnDpiChanged(DpiChangedEventArgs args)
+        {
+            base.OnDpiChanged(args);
+            Arrange();
+        }
+
         internal void ShowChecking() =>
             Present("Checking for updates…", Foreground, showNotes: false, showProgress: false, primaryText: null, secondaryText: "Close", secondaryClick: Close);
 
         internal void ShowUpToDate(string installedVersion) =>
-            Present("You're up to date (" + installedVersion + ").", Foreground, false, false, null, "Close", Close);
+            Present("You're up to date (" + installedVersion + ").", Foreground, false, false, null, "Close", Close, enterCloses: true);
 
         internal void ShowAvailable(UpdateOffer available)
         {
@@ -146,7 +177,9 @@ namespace DlbPrecision.Updater
         {
             progress.Value = total > 0 ? (int)Math.Min(1000, done * 1000 / total) : 0;
             progressText.Text = (done / 1048576.0).ToString("0.0") + " of " + (total / 1048576.0).ToString("0.0") + " MB";
+            if (downloading) return;
             Present("Downloading the update…", Foreground, false, true, null, "Cancel", () => cancellation?.Cancel());
+            downloading = true;
         }
 
         internal void ShowVerifying()
@@ -157,6 +190,8 @@ namespace DlbPrecision.Updater
 
         internal void ShowInstalling()
         {
+            // Setup's own windows must not be covered while it runs.
+            SetAlwaysOnTop(false);
             Present("Installing the update. If Windows asks for permission, click Yes. Your monitor will close and reopen.", Foreground,
                 false, false, null, "Close", null);
             secondary.Enabled = false;
@@ -164,21 +199,37 @@ namespace DlbPrecision.Updater
 
         internal void ShowResult(SetupResult result)
         {
-            bool updated = result.Outcome == SetupOutcome.Updated || result.Outcome == SetupOutcome.UpdatedRestartNeeded
-                || result.Outcome == SetupOutcome.UpdatedReenableStartup;
+            SetAlwaysOnTop(true);
+            if (result.Outcome == SetupOutcome.InUseByAnotherUser) { ShowError(SetupRunner.Message(result), StartUpdate); return; }
+            bool good = SetupRunner.IsUpdated(result.Outcome) && result.Outcome != SetupOutcome.UpdatedServiceNotRunning;
             keptLog = result.KeptLog;
-            Present(SetupRunner.Message(result.Outcome, result.ExitCode), updated ? Blue : Warning, false, false, null, "Close", Close);
+            Present(SetupRunner.Message(result), good ? Blue : Warning, false, false, null, "Close", Close, enterCloses: true);
             details.Visible = keptLog != null;
             if (result.Outcome == SetupOutcome.Updated) closeTimer.Start();
         }
 
-        internal void ShowError(string message, Action? retry) =>
-            Present(message, Warning, false, false, retry != null ? "Try again" : null, "Close", Close, retry);
+        internal void ShowError(string message, Action? retry)
+        {
+            SetAlwaysOnTop(true);
+            Present(message, Warning, false, false, retry != null ? "Try again" : null, "Close", Close, retry, enterCloses: true);
+        }
 
+        // Once the window exists, z-order changes never activate it: WinForms' TopMost property would, and
+        // could pull the result in front of a game the person went back to during the install.
+        private void SetAlwaysOnTop(bool on)
+        {
+            if (!IsHandleCreated) { TopMost = on; return; }
+            if (AlwaysOnTop != on)
+                NativeMethods.SetWindowPos(Handle, on ? NativeMethods.TopMostWindow : NativeMethods.NotTopMostWindow, 0, 0, 0, 0, NativeMethods.ZOrderOnly);
+        }
+
+        // Enter only ever means the visible main action, or Close on a finished screen. While checking or
+        // downloading nothing has focus, so a repeated or stray Enter cannot cancel or close anything.
         private void Present(string message, Color color, bool showNotes, bool showProgress, string? primaryText, string secondaryText,
-            Action? secondaryClick, Action? primaryClick = null)
+            Action? secondaryClick, Action? primaryClick = null, bool enterCloses = false)
         {
             if (IsDisposed) return;
+            downloading = false;
             status.Text = message;
             status.ForeColor = color;
             notes.Visible = showNotes;
@@ -191,7 +242,67 @@ namespace DlbPrecision.Updater
             secondary.Text = secondaryText;
             secondary.Enabled = true;
             secondaryAction = secondaryClick;
-            AcceptButton = primary.Visible ? primary : secondary;
+            Arrange();
+            AcceptButton = primary.Visible ? primary : enterCloses ? secondary : null;
+            ActiveControl = (Control?)AcceptButton;
+        }
+
+        // Every size comes from the current font, so the window keeps its proportions at any display scaling,
+        // and a long message makes the window taller instead of being cut off.
+        private void Arrange()
+        {
+            if (!ready || arranging || IsDisposed) return;
+            arranging = true;
+            SuspendLayout();
+            try
+            {
+                float scale = Math.Max(Font.Height / DesignFontHeight, DeviceDpi / 96f);
+                int Scaled(float value) => (int)Math.Round(value * scale);
+                float titlePoints = Font.SizeInPoints * TitlePoints / BodyPoints;
+                if (Math.Abs(title.Font.SizeInPoints - titlePoints) > 0.01f)
+                {
+                    Font previous = titleFont;
+                    titleFont = new Font("Segoe UI Semibold", titlePoints);
+                    title.Font = titleFont;
+                    previous.Dispose();
+                }
+
+                int left = Scaled(26), width = Scaled(428), clientWidth = left + width + Scaled(26);
+                int line = TextRenderer.MeasureText("Ag", Font).Height;
+                Size titleSize = TextRenderer.MeasureText(title.Text, title.Font);
+                title.SetBounds(Scaled(24), Scaled(18), titleSize.Width + Scaled(4), titleSize.Height + Scaled(2));
+                int statusTop = Math.Max(Scaled(58), title.Bottom + Scaled(6));
+                int statusText = TextRenderer.MeasureText(status.Text, status.Font, new Size(width, 0), TextFormatFlags.WordBreak).Height;
+                status.SetBounds(left, statusTop, width, Math.Max(Scaled(46), statusText + Scaled(4)));
+                int contentTop = status.Bottom + Scaled(4);
+                int buttonHeight = Math.Max(Scaled(34), line + Scaled(14));
+                int chrome = Height - ClientSize.Height;
+                // Before the window exists, use the screen Windows will centre it on; asking for this window's
+                // own screen would create it early, at the default size, and leave it off-centre.
+                Rectangle area = (IsHandleCreated ? Screen.FromControl(this) : Screen.FromPoint(Cursor.Position)).WorkingArea;
+                int notesHeight = Scaled(150);
+                int overflow = contentTop + notesHeight + Scaled(18) + buttonHeight + Scaled(20) + chrome - area.Height;
+                if (overflow > 0) notesHeight = Math.Max(Scaled(60), notesHeight - overflow);
+
+                notes.SetBounds(left, contentTop, width, notesHeight);
+                progress.SetBounds(left, contentTop + Scaled(4), width, Scaled(12));
+                progressText.SetBounds(left, progress.Bottom + Scaled(12), width, line + Scaled(5));
+                int buttonTop = contentTop + notesHeight + Scaled(18);
+                int secondaryWidth = Math.Max(Scaled(102), TextRenderer.MeasureText(secondary.Text, secondary.Font).Width + Scaled(28));
+                int primaryWidth = Math.Max(Scaled(104), TextRenderer.MeasureText(primary.Text, primary.Font).Width + Scaled(28));
+                secondary.SetBounds(clientWidth - Scaled(22) - secondaryWidth, buttonTop, secondaryWidth, buttonHeight);
+                primary.SetBounds(secondary.Left - Scaled(10) - primaryWidth, buttonTop, primaryWidth, buttonHeight);
+                Size link = TextRenderer.MeasureText(details.Text, details.Font);
+                details.SetBounds(left, buttonTop + (buttonHeight - link.Height) / 2, link.Width + Scaled(4), link.Height + Scaled(2));
+                ClientSize = new Size(clientWidth, buttonTop + buttonHeight + Scaled(20));
+                // A minimized window is parked off-screen by Windows; moving it would become its restored size.
+                if (IsHandleCreated && Visible && WindowState == FormWindowState.Normal) Bounds = KeepOnScreen(Bounds, area);
+            }
+            finally
+            {
+                ResumeLayout(false);
+                arranging = false;
+            }
         }
 
         private async void StartCheck()
@@ -207,7 +318,6 @@ namespace DlbPrecision.Updater
                 string source = feed ?? ReleaseFeed.LatestUrl;
                 FeedResult result = await Task.Run(() => ReleaseFeed.Fetch(source, UserAgent));
                 if (IsDisposed) return;
-                if (result.Status == FeedStatus.NoRelease) { ShowUpToDate(Display(installed)); return; }
                 if (result.Status != FeedStatus.Release) { ShowError(result.Message, StartCheck); return; }
                 bool testFeed = feed != null;
                 UpdateDecision decision = UpdateOffer.Decide(result.Release, installed, allowPrerelease: testFeed,
@@ -236,6 +346,12 @@ namespace DlbPrecision.Updater
             FileStream? package = null;
             try
             {
+                // Checked before downloading too, so nobody waits for a download that can't be installed.
+                if (SetupRunner.OtherSessionWidgets() > 0)
+                {
+                    ShowResult(new SetupResult(SetupOutcome.InUseByAnotherUser, -1, null));
+                    return;
+                }
                 DeleteDownloads(installer, checksum);
                 ShowDownloading(0, available.Installer.Size);
                 int shown = -1;
@@ -247,7 +363,7 @@ namespace DlbPrecision.Updater
                         int permille = (int)(bytes * 1000 / available.Installer.Size);
                         if (permille / 5 == shown / 5) return;
                         shown = permille;
-                        PostToWindow(() => { if (progress.Visible) ShowDownloading(bytes, available.Installer.Size); });
+                        PostToWindow(() => { if (downloading) ShowDownloading(bytes, available.Installer.Size); });
                     }, token, UserAgent);
                 }, token);
 
@@ -317,6 +433,14 @@ namespace DlbPrecision.Updater
             return true;
         }
 
+        // Left and top win when the window is larger than the room left, so its title and text stay visible.
+        internal static Rectangle KeepOnScreen(Rectangle window, Rectangle area)
+        {
+            int x = Math.Max(area.Left, Math.Min(window.Left, area.Right - window.Width));
+            int y = Math.Max(area.Top, Math.Min(window.Top, area.Bottom - window.Height));
+            return new Rectangle(x, y, window.Width, window.Height);
+        }
+
         internal static string Display(Version version) =>
             version.Revision > 0 ? version.ToString(4) : version.ToString(3);
 
@@ -337,6 +461,7 @@ namespace DlbPrecision.Updater
             if (keptLog == null || !File.Exists(keptLog)) return;
             // Full path: the updater runs from a temporary folder, which must not be able to supply its own "notepad".
             string notepad = Path.Combine(Environment.SystemDirectory, "notepad.exe");
+            SetAlwaysOnTop(false); // the log the person asked for must be able to open above this window
             try { using (Process.Start(new ProcessStartInfo(notepad, "\"" + keptLog + "\"") { UseShellExecute = false })) { } }
             catch (Win32Exception error) { ShowError("The setup log couldn't be opened: " + error.Message, null); }
         }

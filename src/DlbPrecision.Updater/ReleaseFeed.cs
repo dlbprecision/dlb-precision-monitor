@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Net;
 using System.Runtime.Serialization;
@@ -27,7 +28,7 @@ namespace DlbPrecision.Updater
         [DataMember(Name = "browser_download_url")] public string DownloadUrl { get; set; } = "";
     }
 
-    internal enum FeedStatus { Release, NoRelease, RateLimited, ServerError, Network, Invalid }
+    internal enum FeedStatus { Release, NoRelease, RateLimited, Refused, ServerError, Network, Invalid }
 
     internal sealed class FeedResult
     {
@@ -50,6 +51,8 @@ namespace DlbPrecision.Updater
         private const int MaximumBytes = 1024 * 1024;
         private const int TimeoutMilliseconds = 15000;
         private const string NetworkMessage = "Couldn't reach the update server. Check your internet connection.";
+        private static readonly DateTime UnixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        private static readonly TimeSpan LongestRateLimit = TimeSpan.FromHours(2);
 
         public static bool IsLocal(string source) => !Uri.TryCreate(source, UriKind.Absolute, out Uri? uri) || uri.IsFile;
 
@@ -98,7 +101,9 @@ namespace DlbPrecision.Updater
             }
             catch (WebException error) when (error.Response is HttpWebResponse response)
             {
-                using (response) return FromHttpStatus((int)response.StatusCode);
+                using (response)
+                    return FromHttpStatus((int)response.StatusCode, response.Headers["X-RateLimit-Remaining"], response.Headers["X-RateLimit-Reset"],
+                        response.Headers["Retry-After"]);
             }
             catch (WebException error) when (error.Status == WebExceptionStatus.TrustFailure || error.Status == WebExceptionStatus.SecureChannelFailure)
             {
@@ -120,11 +125,25 @@ namespace DlbPrecision.Updater
             }
         }
 
-        public static FeedResult FromHttpStatus(int status)
+        // GitHub allows 60 anonymous checks an hour per internet address, which a shared network can use up.
+        // Its reply says when the allowance resets; any other 403 is a refusal, often a network filter.
+        public static FeedResult FromHttpStatus(int status, string? remaining = null, string? reset = null, string? retryAfter = null, DateTime? nowUtc = null)
         {
-            if (status == 404) return new FeedResult(FeedStatus.NoRelease, null, "No update has been published yet.");
-            if (status == 403 || status == 429)
-                return new FeedResult(FeedStatus.RateLimited, null, "Too many update checks right now. Try again in a few minutes.");
+            // After go-live a Latest release always exists, so a missing one is a problem to report, not "up to date".
+            if (status == 404) return new FeedResult(FeedStatus.NoRelease, null, "DLB's update information couldn't be found (HTTP 404). Try again later.");
+            if (status == 429 || (status == 403 && (remaining?.Trim() == "0" || retryAfter != null)))
+            {
+                DateTime now = nowUtc ?? DateTime.UtcNow;
+                DateTime? until = null;
+                if (int.TryParse(retryAfter, NumberStyles.None, CultureInfo.InvariantCulture, out int seconds)) until = now.AddSeconds(seconds);
+                else if (long.TryParse(reset, NumberStyles.None, CultureInfo.InvariantCulture, out long epoch) && epoch < 32503680000) until = UnixEpoch.AddSeconds(epoch);
+                // A reset time in the past or far away means this PC's clock disagrees with GitHub's; don't show it.
+                bool sensible = until.HasValue && until.Value > now && until.Value - now <= LongestRateLimit;
+                return new FeedResult(FeedStatus.RateLimited, null, "Too many update checks from this network. "
+                    + (sensible ? "Try again after " + until!.Value.ToLocalTime().ToString("t", CultureInfo.CurrentCulture) + "." : "Try again in about an hour."));
+            }
+            if (status == 403)
+                return new FeedResult(FeedStatus.Refused, null, "The update server refused the request (HTTP 403). A firewall or network filter may be blocking GitHub.");
             if (status >= 500) return new FeedResult(FeedStatus.ServerError, null, "The update server is having trouble. Try again later.");
             return new FeedResult(FeedStatus.Invalid, null, "The update server gave an unexpected reply (HTTP " + status + ").");
         }

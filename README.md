@@ -8,9 +8,9 @@ Appearance preview with sample data. The widget also supports a resizable vertic
 
 ## Install
 
-**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.8/DLB-Precision-Monitor-0.1.8-Setup.exe)**
+**[Download DLB Precision Monitor for Windows 11](https://github.com/dlbprecision/dlb-precision-monitor/releases/download/v0.1.9/DLB-Precision-Monitor-0.1.9-Setup.exe)**
 
-**v0.1.8 adds Check for updates: later versions install from inside the monitor, after it verifies they are signed by DLB Precision, LLC.** It keeps the v0.1.7 fixes (no flashing box, true 1-second refresh, 50–150% size) and the bundled driver setup from previous releases. Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. It remains a prerelease for testing. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.8) is an optional checksum, not another installer.
+**v0.1.9 makes Check for updates ready for everyone:** the update window opens in front of Settings, fits its text at every Windows display scaling, and explains clearly when an update can't run. Later versions install from inside the monitor after it verifies they are signed by DLB Precision, LLC. It keeps the v0.1.7 fixes (no flashing box, true 1-second refresh, 50–150% size). Setup, the uninstaller and DLB's application files carry DLB Precision, LLC signatures and timestamps. This is a pilot release, with broader hardware testing still in progress. No GitHub account is needed. Download only the setup EXE; the `.sha256` file on the [release page](https://github.com/dlbprecision/dlb-precision-monitor/releases/tag/v0.1.9) is an optional checksum, not another installer.
 
 1. Download the setup using the link above. If your browser says it **isn't commonly downloaded**, open its Downloads list and choose **Keep** / **Keep anyway**, if offered, for this DLB download.
 2. Double-click the downloaded setup. If Windows says **Windows protected your PC** and describes an **unrecognized app**, choose **More info**, then **Run anyway**, only if you trust this official DLB pilot download.
@@ -23,13 +23,23 @@ update, confirms it is genuinely signed by DLB Precision, LLC, and installs it.
 If Windows asks for permission, choose **Yes**. The monitor closes and reopens on
 the new version with your settings, size and position kept, including whether
 it launches at sign-in. It checks only when you ask, and only then contacts
-GitHub. If another Windows user on the same PC also has the monitor open, setup
-closes their copy too; it reopens at their next sign-in or from the shortcut.
+GitHub. From v0.1.9 on, if another Windows user on the same PC also has the
+monitor open, the update waits, because Windows can't close another user's
+program: close it there (or sign that user out), then choose **Try again**.
+
+On **v0.1.8**, the update window can open hidden behind Settings. If nothing
+seems to happen after **Check for updates…** in Settings, close Settings: the
+update window is behind it. (Next time, close Settings first, then use **Check
+for updates…** in the right-click menu.) If v0.1.8 reports that
+the update "didn't finish (code 21)", the update is installed but the sensor
+service needs a Windows restart.
 
 **Updating from v0.1.7 or earlier, or by hand:** download the current setup EXE
 above, right-click the monitor and choose **Exit**, then run the new setup. There
 is no need to uninstall first. Setup upgrades the existing installation and keeps
-your saved settings. Open the monitor from its desktop shortcut afterward.
+your saved settings. Afterward, open the monitor from the Start menu or its
+desktop shortcut, or leave **Open DLB Precision Monitor** ticked on setup's last
+page.
 
 If setup requests a Windows restart before it can finish the driver step, restart
 and run the same DLB installer again. Working shared PawnIO installations are
@@ -73,7 +83,7 @@ Different tools may use different sensor definitions or sampling intervals. Miss
 - `DlbPrecision.Monitor`: per-user widget; never needs elevation for normal operation.
 - `DlbPrecision.Service`: `DlbPrecisionSensors` Windows service, running as LocalSystem for sensor access.
 - `DlbPrecision.Sensors`: embedded LibreHardwareMonitorLib 0.9.6 with only CPU/GPU monitoring enabled, plus native Windows CPU/RAM metrics. Library sensor history is disabled.
-- `DlbPrecision.Updater`: separate updater, started only by **Check for updates…**. It makes one HTTPS request for this repository's GitHub **Latest** release, downloads the setup and its checksum, and runs setup only after verifying the checksum and that Windows trusts a timestamped DLB Precision, LLC signature issued through Microsoft's identity-verified signing chain. It never offers drafts, pre-releases or older versions. The widget and sensor service contain no network code.
+- `DlbPrecision.Updater`: separate updater, started only by **Check for updates…**. It makes one HTTPS request for this repository's GitHub **Latest** release, downloads the setup and its checksum, and runs setup only after verifying the checksum and that Windows trusts a timestamped signature from DLB Precision, LLC of Arkansas, US, issued through Microsoft's identity-verified signing chain, on a file that is the DLB Precision Monitor setup for that version. It never offers drafts, pre-releases or older versions. The widget and sensor service contain no network code.
 - `DlbPrecision.Shared`: small local output-only named-pipe protocol. The widget authenticates the server PID against SCM. No network connection, file path, or command is accepted from the widget. Widgets that ask at nearly the same moment share one sample, and every 1-second refresh receives new readings.
 
 ## Build and check
@@ -85,7 +95,7 @@ dotnet build DlbPrecision.sln -c Release
 .\scripts\Test.ps1
 .\scripts\Test.ps1 -Integration # Requires installed sensor service
 .\scripts\Test-Installer.ps1 # Compiled prerequisite scenarios; no driver changes
-.\scripts\Build-Installer.ps1 -Version 0.1.8 -OutputDirectory .\artifacts\unsigned-0.1.8-attempt-1
+.\scripts\Build-Installer.ps1 -Version 0.1.9 -OutputDirectory .\artifacts\unsigned-0.1.9-attempt-1
 ```
 
 The build script pins and verifies downloaded build tools and driver payloads. It includes dependency license notices, exact versions, hashes, and required source material. It does not install the app. The command above makes an **unsigned local build**; release signing is opt-in and requires DLB's approved signing profile. See [installer build instructions](installer/README.md) and [code-signing instructions](docs/CODE-SIGNING.md). Use a new output directory for each attempt; existing installer files and checksums are never overwritten.
@@ -100,15 +110,66 @@ Useful diagnostic commands:
 
 Preview images are labeled SAMPLE DATA; they are appearance references, not live readings. An unelevated standalone probe can lack CPU temperature/clock even when the installed service has access.
 
-**Releasing an update:** in-app updates offer only the GitHub release marked
-**Latest**. Publish a new version as a pre-release, test it, then mark it as the
-latest release to offer it to everyone; marking it as a pre-release again stops
-new in-app updates to it. To try the in-app update with a pre-release first, run
-the installed updater with a test feed, for example
-`"C:\Program Files\DLB Precision Monitor\DlbPrecision.Updater.exe" --feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/v0.1.9`.
-A feed can only choose which release to offer; the same version and signature
-checks apply. `DlbPrecision.Updater.exe --render-preview <folder>` saves pictures
-of each updater screen.
+### Releasing an update
+
+In-app updates offer only the GitHub release marked **Latest**, and every
+installed copy checks it with the rules it was built with. A release that breaks
+these rules is silently never offered, so follow this list every time:
+
+1. **Never rename, re-case, transfer, make private or delete** the
+   `dlbprecision` account or the `dlb-precision-monitor` repository. Every
+   installed copy has `api.github.com/repos/dlbprecision/dlb-precision-monitor`
+   compiled in; breaking it strands all of them on their current version until
+   someone reinstalls by hand.
+2. Commit everything first, then build with `Build-Installer.ps1 -Sign` and a
+   three-part `-Version X.Y.Z` (at most 4, 4 and 5 digits). The signed build
+   refuses uncommitted changes, prints the commit it was built from, runs the
+   new updater's own checks on the finished setup and fails if installed copies
+   would refuse it. Release that exact commit: tag it, and later merge it with a
+   **merge commit** (not squash or rebase) so the commit recorded in the
+   binaries stays on `main`.
+   Test builds use `-TestBuild` with a four-part version (for example 0.1.8.9),
+   so they sort below the next release and can never be offered as one. Never
+   sign a throwaway build with a releasable three-part version.
+3. Create the tag **lowercase** `vX.Y.Z` (same X.Y.Z as `-Version`) on the
+   build commit from git first, `git tag -a vX.Y.Z <commit the build printed>`
+   then `git push origin <branch> vX.Y.Z`, and choose that existing tag in
+   GitHub's release form (left to itself, the form tags the default branch).
+   Attach both build outputs under their exact names,
+   `DLB-Precision-Monitor-X.Y.Z-Setup.exe` and
+   `DLB-Precision-Monitor-X.Y.Z-Setup.exe.sha256` (setup under 64 MiB), and
+   publish it as a **pre-release** first. Publish before merging a README that
+   links to the new download, so the link never points at a missing file. Never
+   replace the assets of a release once published; fix problems with a new
+   version.
+4. Write the release notes for people reading them inside the updater: plain
+   paragraphs without hard line breaks, no "download this setup" steps (the
+   updater does that), and manual-install steps only on the README.
+5. Try the update from the installed updater with a test feed, for example
+   `"C:\Program Files\DLB Precision Monitor\DlbPrecision.Updater.exe" --feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/vX.Y.Z`.
+   A feed only chooses which release to offer; it allows pre-releases and skips
+   the download-address rule, but the same tag, file, signature and version
+   checks apply. This moves the PC to the new version, so keep the previous
+   release's `DlbPrecision.Updater.exe` (in its signed build's `stage-*\app`
+   folder) for the next step.
+6. Run the go-live check with the updater of **every release still in use**
+   (at least v0.1.8, the oldest that updates itself, and the previous release),
+   because a copy that skipped releases keeps its own rules. Before marking
+   Latest, run the pre-flight against the published pre-release:
+   `.\scripts\Check-LatestOffer.ps1 -Updater <older DlbPrecision.Updater.exe> -Feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/vX.Y.Z -AsIfLatest -ExpectVersion X.Y.Z`.
+   Then mark the release **Latest**, wait a minute, and run it again without
+   `-Feed` and `-AsIfLatest`. Each run must print two PASS lines (offered, and
+   verified after a real download). "You're up to date" in the window is not a
+   go-live check.
+7. To pull a release back, make the **previous good release** Latest rather
+   than only marking the bad one as a pre-release: edit it, untick **Set as a
+   pre-release** (a pre-release can't be Latest), tick **Set as the latest
+   release** and save. Check that `/releases/latest` now returns it, and point
+   the README download link back to it. With no Latest release at all, v0.1.9
+   and later report an error on every check.
+
+`DlbPrecision.Updater.exe --render-preview <folder>` saves pictures of each
+updater screen.
 
 For accessibility/UI testing only, `--test-window` exposes the otherwise taskbar-hidden widget to native test tools. Regular launches omit this switch. `--reset-position` recovers saved offscreen placement.
 

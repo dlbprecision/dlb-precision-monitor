@@ -18,10 +18,15 @@ namespace DlbPrecision.Shared
         [DataMember(Order = 8)] public string Status { get; set; } = "Starting";
         [DataMember(Order = 9)] public List<string> Warnings { get; set; } = new List<string>();
 
+        // Set on snapshots made here for a read that failed, so sensor recovery knows nothing was read. Not a
+        // DataMember: it is never sent to the widget.
+        public bool ReadFailed { get; private set; }
+
         public static SensorSnapshot Unavailable(string reason) => new SensorSnapshot
         {
             Status = reason,
-            Warnings = new List<string> { reason }
+            Warnings = new List<string> { reason },
+            ReadFailed = true
         };
     }
 

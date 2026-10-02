@@ -23,6 +23,14 @@ namespace DlbPrecision.Monitor
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool DestroyIcon(IntPtr handle);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool ReleaseCapture();
         [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
+        [DllImport("user32.dll", EntryPoint = "SendMessage")] private static extern IntPtr SendRectMessage(IntPtr handle, int message, IntPtr wParam, ref NativeRect lParam);
+
+        // WM_DPICHANGED with Windows' suggested new bounds, for the display-change smoke test.
+        public static void SendDpiChanged(IntPtr handle, int dpi, System.Drawing.Rectangle suggested)
+        {
+            var rect = new NativeRect { Left = suggested.Left, Top = suggested.Top, Right = suggested.Right, Bottom = suggested.Bottom };
+            SendRectMessage(handle, 0x02E0, new IntPtr((dpi << 16) | dpi), ref rect);
+        }
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool PostMessage(IntPtr handle, int message, IntPtr wParam, IntPtr lParam);
         [DllImport("user32.dll")] [return: MarshalAs(UnmanagedType.Bool)] public static extern bool SetWindowPos(IntPtr handle, IntPtr insertAfter, int x, int y, int width, int height, uint flags);
         [DllImport("user32.dll")] private static extern int GetWindowLong(IntPtr handle, int index);
@@ -38,6 +46,8 @@ namespace DlbPrecision.Monitor
 
         // Changes stay-on-top without activating the window; only acts when the state differs, so the
         // widget's place among other windows is not disturbed.
+        public static bool IsAlwaysOnTop(IntPtr handle) => (GetWindowLong(handle, GwlExStyle) & WsExTopmost) != 0;
+
         public static void SetAlwaysOnTop(IntPtr handle, bool alwaysOnTop)
         {
             bool current = (GetWindowLong(handle, GwlExStyle) & WsExTopmost) != 0;

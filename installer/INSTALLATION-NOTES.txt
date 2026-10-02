@@ -1,7 +1,7 @@
-DLB Precision Monitor 0.1.8 - unsigned pilot build
+DLB Precision Monitor 0.1.9 - unsigned pilot build
 
-For Windows 11 x64 PCs. This is a prerelease for testing, with broader hardware
-and installation testing still in progress.
+For Windows 11 x64 PCs. This is a pilot release, with broader hardware and
+installation testing still in progress.
 
 One setup installs the monitor and its DLB Precision Sensors service. Windows
 administrator approval is required. Normal monitor launches do not need elevation.

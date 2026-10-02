@@ -75,8 +75,8 @@ uses a new staging directory and never deletes earlier build artifacts.
 
 ```powershell
 $signingBuild = @{
-    Version = '0.1.3'
-    OutputDirectory = '.\artifacts\release-0.1.3-attempt-1'
+    Version = '0.1.9'
+    OutputDirectory = '.\artifacts\release-0.1.9-attempt-1'
     Sign = $true
     SignToolPath = '<full-path-to-x64-signtool.exe>'
     DlibPath = '<full-path-to-x64-Azure.CodeSigning.Dlib.dll>'
@@ -98,8 +98,12 @@ For an unsigned local build, omit all signing parameters:
 ```
 
 Passing signing parameters without `-Sign` is an error. `-Version` is passed to
-both application builds. `-SkipBuild` checks the version of the existing DLB
-outputs; it does not establish source freshness, so release builds should rebuild.
+both application builds. Release versions must be `MAJOR.MINOR.PATCH`, the only
+form installed updaters offer; a test build needs `-TestBuild` and a four-part
+version such as `0.1.8.9`, which sorts below the next release and can never be
+offered as one. `-SkipBuild` checks the version of the existing DLB
+outputs but cannot establish source freshness, so signed release builds refuse
+it and always rebuild from the committed source.
 
 ## Signing order and checks
 
@@ -116,13 +120,17 @@ outputs; it does not establish source freshness, so release builds should rebuil
    temporary file; there is no persistent signed cache to check afterward.
 4. Verify the final setup again, then create its SHA256 sidecar. Publish those
    exact bytes together. Never calculate the release checksum before signing.
+5. Run the just-built updater with `--verify-package <setup> <version> <report>`.
+   It applies every rule installed updaters use before running a setup (file
+   name, size, checksum, Windows signature check, publisher identity, setup
+   identity and version) and the build fails if it refuses.
 
 The wrapper uses SHA256 for the file and RFC 3161 timestamp digests and Microsoft's
 `http://timestamp.acs.microsoft.com` timestamp service. Timestamping is required:
 Artifact Signing leaf certificates have a three-day validity period. Every sign
 and `signtool verify /pa /all /tw` command must exit zero; warnings fail the build.
 Authenticode must also report Valid, provide a timestamp certificate, and match
-the exact configured publisher. Existing signatures are verified and never
+the exact configured publisher in both the common name and the organization. Existing signatures are verified and never
 replaced or appended to.
 
 `Sign-Artifact.ps1 -ValidateOnly` validates paths and metadata without contacting
@@ -145,13 +153,19 @@ The in-app updater installs a downloaded setup only when its SHA-256 matches the
 release's `.sha256` file, Windows verifies the Authenticode signature with
 revocation checks, the file has exactly one signer whose signature verifies under
 its certificate, the signer's common name and organization are both exactly
-`DLB Precision, LLC`, the certificate chain builds to a root this PC trusts and
+`DLB Precision, LLC` with state `Arkansas` and country `US` (a company name is
+unique only within its state), the certificate chain builds to a root this PC trusts and
 that root is `Microsoft Identity Verification Root Certificate Authority 2020`
 (thumbprint `F40042E2E5F7E8EF8189FED15519AECE42C3BFA2`, valid until 2045), the
-certificate is for code signing, the signature is timestamped, and setup's product
-version equals the release version. The root is pinned rather than the leaf, so
-certificate rotation every few days needs no app change. On the real feed, files
-must come from `https://github.com/dlbprecision/dlb-precision-monitor/releases/download/`.
+certificate is for code signing, the signature is timestamped, the file
+describes itself as `DLB Precision Monitor Setup` for product `DLB Precision
+Monitor` (so DLB's uninstaller or another DLB product's installer is refused),
+and setup's product version equals the release version. The root is pinned
+rather than the leaf, so certificate rotation every few days needs no app change.
+On the real feed, files must come from
+`https://github.com/dlbprecision/dlb-precision-monitor/releases/download/vX.Y.Z/`
+with the exact file name; the owner and repository part ignores case, as GitHub
+does, and the tag and file name must match exactly.
 
 The verified setup is held open with writes and deletes blocked until it exits, so
 the bytes checked are the bytes Windows runs. Setup itself runs from the
@@ -159,13 +173,37 @@ updater's private folder under the user's `%TEMP%`, the same exposure as running
 setup from the Downloads folder: software already running as that user could
 interfere with it there, which a publisher signature cannot prevent.
 
-Every future updater must keep accepting `--cleanup <folder> <pid>`: after an
-update, the previous version's temporary copy asks the newly installed updater
-to remove its folder with exactly those arguments.
+### Contract with installed copies (do not change)
 
-If DLB's validated publisher name or signing service ever changes, installed
-copies will refuse releases signed the new way. Publish such a release with
-instructions for a one-time manual install, after which in-app updates resume.
+Installed updaters keep the rules they shipped with, so these must stay as they
+are in every future release:
+
+- The `dlbprecision/dlb-precision-monitor` GitHub account and repository: never
+  renamed, re-cased, transferred, made private or deleted.
+- Tags `vX.Y.Z` (lowercase `v`; at most 4, 4 and 5 digits) and assets
+  `DLB-Precision-Monitor-X.Y.Z-Setup.exe` plus its `.sha256`, under 64 MiB.
+- Setup's `VersionInfoDescription=DLB Precision Monitor Setup`,
+  `VersionInfoProductName=DLB Precision Monitor` and product version `X.Y.Z`.
+- Setup's handling of `/SILENT /SUPPRESSMSGBOXES /NOCANCEL /NORESTART
+  /RESTARTEXITCODE=3010 /DLBUPDATE=1 /LOG=… /MERGETASKS=…`, its task names
+  `startup` and `desktopicon`, and its exit codes 20 (launch at sign-in not
+  enabled) and 21 (sensor service did not start).
+- The sensor service name `DlbPrecisionSensors`, running when setup exits and
+  readable by standard users (the updater checks it after an update), and the
+  per-user Run value `DLBPrecisionMonitor` = `"<install folder>\DlbPrecision.Monitor.exe"`
+  for launch at sign-in.
+- `DlbPrecision.Monitor.exe --from-installer`, and every updater accepting
+  `--cleanup <folder> <pid>`: after an update, the previous version's temporary
+  copy asks the newly installed updater to remove its folder with exactly those
+  arguments.
+
+If DLB's validated publisher name, state or country, or the signing service,
+ever changes, installed copies will refuse releases signed the new way. Shipping
+an updater that accepts both identities first only helps copies that install
+it; a copy that skipped that release keeps its older rules and will refuse the
+new signature. So keep signing the old way for as long as older copies are in
+use, or publish the changed release with instructions for a one-time manual
+install, after which in-app updates resume.
 
 A valid publisher signature does not guarantee immediate SmartScreen reputation
 or replace malware detection review. See [Microsoft's code-signing guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options).
