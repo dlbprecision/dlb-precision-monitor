@@ -359,6 +359,27 @@ internal static class Program
         }
         Check(blipLive && !recovery.GpuExhausted && !recovery.Pending && blipReopens <= 4, "After many one-sample dropouts, a real driver outage is still found again (" + blipReopens + " reopens).");
 
+        // The next wait is measured from when a reopen finished, so a slow reopen is not followed at once by another.
+        recovery = new SensorRecovery();
+        var cpuMissing = new SensorSnapshot { CpuTemperatureC = 50, Gpus = new List<GpuSnapshot>() };
+        recovery.Observe(cpuMissing, 0);
+        recovery.Observe(cpuMissing, 1000);
+        Check(recovery.TryBeginRetry(10000), "The first CPU retry is due after 10 seconds.");
+        recovery.Observe(cpuMissing, 45000);                                   // that reopen took 35 seconds
+        Check(!recovery.TryBeginRetry(46000) && !recovery.TryBeginRetry(74999) && recovery.TryBeginRetry(75000),
+            "After a 35-second reopen, the next retry still waits its full 30 seconds from the end of it.");
+
+        // A reading that is blank on every other sample is a fault, not a series of isolated dropouts.
+        recovery = new SensorRecovery();
+        long altReopen = -1;
+        for (long t = 0; t <= 700_000 && altReopen < 0; t += 1000)
+        {
+            if (t > 0 && recovery.TryBeginRetry(t)) altReopen = t;
+            bool bad = t >= 600_000 && (t / 1000) % 2 == 1;
+            recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = bad ? (double?)null : 4000 }, t);
+        }
+        Check(altReopen >= 600_000 && altReopen <= 615_000, "CPU readings blank on every other sample are retried within seconds (" + altReopen / 1000 + " s).");
+
         // A reopen whose sensor reader can't be built leaves nothing to read; recovery keeps going for the card
         // even when the CPU can't be read at all.
         recovery = new SensorRecovery();

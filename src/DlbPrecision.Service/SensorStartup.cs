@@ -68,7 +68,8 @@ namespace DlbPrecision.Service
         // (unplugged or disabled).
         private static readonly long[] CpuDelays = { 10000, 30000, 60000 };
         private static readonly long[] GpuDelays = { 10000, 60000, 300000, 900000 };
-        // A fault counts only once it lasts two samples, so an isolated dropout costs nothing.
+        // A fault counts only once it has two bad samples without readings settling in between, so an isolated
+        // dropout costs nothing.
         // A brief good reading neither cancels a planned retry nor refills a budget. Readings must stay good for
         // SettleTime to cancel a retry, and for RefillTime before a new fault gets a fresh budget. A fault that
         // returns within RefillTime of such a natural recovery gets a firm retry that good readings no longer
@@ -87,6 +88,7 @@ namespace DlbPrecision.Service
             public long GoodSince = -1;  // -1 while failing
             public long BadSince;        // start of the fault, or of the wait since the last reopen
             public int BadSamples;
+            public bool Reopened;        // a reopen spent this track's retry; the next wait starts when it is read
             public long CancelledAt = long.MinValue / 2;
         }
 
@@ -122,7 +124,7 @@ namespace DlbPrecision.Service
             track.Retries++;
             track.DueAt = -1;
             track.Firm = false;
-            track.BadSince = milliseconds; // the next retry waits from this reopen
+            track.Reopened = true;
         }
 
         internal static bool CpuReady(SensorSnapshot snapshot) => snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
@@ -168,15 +170,19 @@ namespace DlbPrecision.Service
         {
             if (good)
             {
-                track.BadSamples = 0;
                 if (track.GoodSince < 0) track.GoodSince = milliseconds;
                 long goodFor = milliseconds - track.GoodSince;
+                // A fault is over once readings have settled, not at the first good sample, so a reading that is
+                // blank on every other sample still counts as one fault.
+                if (goodFor >= SettleTime) track.BadSamples = 0;
                 if (goodFor >= SettleTime && track.DueAt >= 0 && !track.Firm) { track.DueAt = -1; track.CancelledAt = milliseconds; }
                 if (goodFor >= RefillTime) { track.Retries = 0; track.DueAt = -1; track.Firm = false; }
                 return;
             }
             track.GoodSince = -1;
-            if (track.BadSamples++ == 0) track.BadSince = milliseconds;
+            // The first sample after a reopen comes once it has finished, however long that took.
+            if (track.BadSamples++ == 0 || track.Reopened) track.BadSince = milliseconds;
+            track.Reopened = false;
             if (track.BadSamples < 2 || track.DueAt >= 0 || track.Retries == delays.Length) return;
             track.DueAt = track.BadSince + delays[track.Retries];
             track.Firm = milliseconds - track.CancelledAt < RefillTime;
