@@ -114,7 +114,14 @@ namespace DlbPrecision.Service
             bool cpuRetry = !cpuReady && cpuRetries < CpuDelays.Length;
             bool gpuRetry = !gpusReady && gpuRetries < GpuDelays.Length;
             if (!cpuRetry && !gpuRetry) retryAt = -1;
-            else if (!Pending) retryAt = milliseconds + (cpuRetry ? CpuDelays[cpuRetries] : GpuDelays[gpuRetries]);
+            else if (cpuRetry)
+            {
+                // CPU readings come first: a long GPU wait already scheduled never holds them up. Repeated failed
+                // samples still never postpone a retry that is due sooner.
+                long cpuAt = milliseconds + CpuDelays[cpuRetries];
+                retryAt = Pending ? Math.Min(retryAt, cpuAt) : cpuAt;
+            }
+            else if (!Pending) retryAt = milliseconds + GpuDelays[gpuRetries];
             return cpuReady && gpusReady;
         }
 

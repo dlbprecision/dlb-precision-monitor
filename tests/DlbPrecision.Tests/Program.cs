@@ -231,6 +231,17 @@ internal static class Program
             "A graphics driver that takes 8 minutes to install is found again by the slower GPU retries, after at most four sensor reopens (" + reopens + ").");
         Check(!recovery.Observe(Sample(blank), now + 2000) && recovery.Pending, "That GPU is still watched afterwards.");
 
+        // A long GPU wait never holds up the CPU's own, quicker recovery.
+        recovery = new SensorRecovery();
+        recovery.Observe(Sample(live), 0);
+        now = 1000;
+        recovery.Observe(Sample(blank), now);
+        now = RetryAndObserve(recovery, now, Sample(blank));
+        now = RetryAndObserve(recovery, now, Sample(blank));
+        var cpuGone = new SensorSnapshot { CpuTemperatureC = 50, Gpus = new List<GpuSnapshot> { blank } };
+        Check(!recovery.Observe(cpuGone, now + 1000) && recovery.Pending && recovery.TryBeginRetry(now + 11000),
+            "CPU readings lost while a 5-minute GPU retry is waiting are retried after 10 seconds, not after the GPU wait.");
+
         var reported = new SensorSnapshot { Status = "ok" };
         SensorRecovery.AddWarning(reported, "Retrying sensors.");
         Check(reported.Status == "partial" && reported.Warnings.Contains("Retrying sensors."),
