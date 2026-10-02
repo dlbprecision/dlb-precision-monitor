@@ -187,15 +187,22 @@ are in every future release:
   /RESTARTEXITCODE=3010 /DLBUPDATE=1 /LOG=… /MERGETASKS=…`, its task names
   `startup` and `desktopicon`, and its exit codes 20 (launch at sign-in not
   enabled) and 21 (sensor service did not start).
+- The sensor service name `DlbPrecisionSensors`, running when setup exits and
+  readable by standard users (the updater checks it after an update), and the
+  per-user Run value `DLBPrecisionMonitor` = `"<install folder>\DlbPrecision.Monitor.exe"`
+  for launch at sign-in.
 - `DlbPrecision.Monitor.exe --from-installer`, and every updater accepting
   `--cleanup <folder> <pid>`: after an update, the previous version's temporary
   copy asks the newly installed updater to remove its folder with exactly those
   arguments.
 
 If DLB's validated publisher name, state or country, or the signing service,
-ever changes, installed copies will refuse releases signed the new way. Ship an
-updater that accepts both identities first, or publish such a release with
-instructions for a one-time manual install, after which in-app updates resume.
+ever changes, installed copies will refuse releases signed the new way. Shipping
+an updater that accepts both identities first only helps copies that install
+it; a copy that skipped that release keeps its older rules and will refuse the
+new signature. So keep signing the old way for as long as older copies are in
+use, or publish the changed release with instructions for a one-time manual
+install, after which in-app updates resume.
 
 A valid publisher signature does not guarantee immediate SmartScreen reputation
 or replace malware detection review. See [Microsoft's code-signing guidance](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options).

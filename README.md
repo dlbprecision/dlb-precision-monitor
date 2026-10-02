@@ -23,14 +23,22 @@ update, confirms it is genuinely signed by DLB Precision, LLC, and installs it.
 If Windows asks for permission, choose **Yes**. The monitor closes and reopens on
 the new version with your settings, size and position kept, including whether
 it launches at sign-in. It checks only when you ask, and only then contacts
-GitHub. Windows can't close a program another user has open, so if another
-Windows user on the same PC also has the monitor open, the update waits: close
-it there (or sign that user out), then choose **Try again**.
+GitHub. From v0.1.9 on, if another Windows user on the same PC also has the
+monitor open, the update waits, because Windows can't close another user's
+program: close it there (or sign that user out), then choose **Try again**.
+
+On **v0.1.8**, the update window can open hidden behind Settings. If nothing
+seems to happen after **Check for updates…** in Settings, close Settings, or use
+**Check for updates…** in the right-click menu instead. If v0.1.8 reports that
+the update "didn't finish (code 21)", the update is installed but the sensor
+service needs a Windows restart.
 
 **Updating from v0.1.7 or earlier, or by hand:** download the current setup EXE
 above, right-click the monitor and choose **Exit**, then run the new setup. There
 is no need to uninstall first. Setup upgrades the existing installation and keeps
-your saved settings. Open the monitor from its desktop shortcut afterward.
+your saved settings. Afterward, open the monitor from the Start menu or its
+desktop shortcut, or leave **Open DLB Precision Monitor** ticked on setup's last
+page.
 
 If setup requests a Windows restart before it can finish the driver step, restart
 and run the same DLB installer again. Working shared PawnIO installations are
@@ -112,30 +120,46 @@ these rules is silently never offered, so follow this list every time:
    installed copy has `api.github.com/repos/dlbprecision/dlb-precision-monitor`
    compiled in; breaking it strands all of them on their current version until
    someone reinstalls by hand.
-2. Build with `Build-Installer.ps1 -Sign` and a three-part `-Version X.Y.Z`
-   (at most 4, 4 and 5 digits). The signed build runs the new updater's own
-   checks on the finished setup and fails if installed copies would refuse it.
+2. Commit everything first, then build with `Build-Installer.ps1 -Sign` and a
+   three-part `-Version X.Y.Z` (at most 4, 4 and 5 digits). The signed build
+   refuses uncommitted changes, prints the commit it was built from, runs the
+   new updater's own checks on the finished setup and fails if installed copies
+   would refuse it. Release that exact commit: tag it, and later merge it with a
+   **merge commit** (not squash or rebase) so the commit recorded in the
+   binaries stays on `main`.
    Test builds use `-TestBuild` with a four-part version (for example 0.1.8.9),
    so they sort below the next release and can never be offered as one. Never
    sign a throwaway build with a releasable three-part version.
-3. Create the tag **lowercase** `vX.Y.Z` (same X.Y.Z as `-Version`), attach both
-   build outputs under their exact names, `DLB-Precision-Monitor-X.Y.Z-Setup.exe`
-   and `DLB-Precision-Monitor-X.Y.Z-Setup.exe.sha256` (setup under 64 MiB), and
-   publish it as a **pre-release** first. Never replace the assets of a release
-   once published; fix problems with a new version.
+3. Create the tag **lowercase** `vX.Y.Z` (same X.Y.Z as `-Version`) on the
+   build commit, attach both build outputs under their exact names,
+   `DLB-Precision-Monitor-X.Y.Z-Setup.exe` and
+   `DLB-Precision-Monitor-X.Y.Z-Setup.exe.sha256` (setup under 64 MiB), and
+   publish it as a **pre-release** first. Publish before merging a README that
+   links to the new download, so the link never points at a missing file. Never
+   replace the assets of a release once published; fix problems with a new
+   version.
 4. Write the release notes for people reading them inside the updater: plain
    paragraphs without hard line breaks, no "download this setup" steps (the
    updater does that), and manual-install steps only on the README.
 5. Try the update from the installed updater with a test feed, for example
    `"C:\Program Files\DLB Precision Monitor\DlbPrecision.Updater.exe" --feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/vX.Y.Z`.
-   A feed only chooses which release to offer; it allows pre-releases, but the
-   same tag, file, signature and version checks apply.
-6. Mark the release **Latest**, wait a minute, then run the go-live check with
-   the **previous** release's updater, whose rules customers are running:
-   `.\scripts\Check-LatestOffer.ps1 -Updater <previous DlbPrecision.Updater.exe> -ExpectVersion X.Y.Z`.
-   It must print two PASS lines (offered, and verified after a real download).
-   "You're up to date" in the window is not a go-live check. Marking the release
-   as a pre-release again stops new in-app updates to it.
+   A feed only chooses which release to offer; it allows pre-releases and skips
+   the download-address rule, but the same tag, file, signature and version
+   checks apply. This moves the PC to the new version, so keep the previous
+   release's `DlbPrecision.Updater.exe` (in its signed build's `stage-*\app`
+   folder) for the next step.
+6. Run the go-live check with the updater of **every release still in use**
+   (at least v0.1.8, the oldest that updates itself, and the previous release),
+   because a copy that skipped releases keeps its own rules. Before marking
+   Latest, run the pre-flight against the published pre-release:
+   `.\scripts\Check-LatestOffer.ps1 -Updater <older DlbPrecision.Updater.exe> -Feed https://api.github.com/repos/dlbprecision/dlb-precision-monitor/releases/tags/vX.Y.Z -AsIfLatest -ExpectVersion X.Y.Z`.
+   Then mark the release **Latest**, wait a minute, and run it again without
+   `-Feed` and `-AsIfLatest`. Each run must print two PASS lines (offered, and
+   verified after a real download). "You're up to date" in the window is not a
+   go-live check.
+7. To pull a release back, mark the **previous good release** as Latest rather
+   than only marking the bad one as a pre-release. With no Latest release at
+   all, v0.1.9 and later report an error on every check.
 
 `DlbPrecision.Updater.exe --render-preview <folder>` saves pictures of each
 updater screen.

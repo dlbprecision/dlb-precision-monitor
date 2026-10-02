@@ -8,6 +8,8 @@ param(
     [string]$AssumeInstalled,
     # Omit for the live GitHub Latest release, which is what customers get.
     [string]$Feed,
+    # Pre-flight before marking Latest: judge a published pre-release (given with -Feed) as if it were Latest.
+    [switch]$AsIfLatest,
     [switch]$SkipDownload
 )
 # Read-only release check. It runs a released updater's own offer rules against the live Latest
@@ -30,10 +32,19 @@ try {
     $prefix = [string]$feedType.GetField('DownloadPrefix', $any).GetValue($null)
     Write-Host ("Rules from updater {0}; installed version assumed {1}" -f (Get-Item -LiteralPath $Updater).VersionInfo.FileVersion, $AssumeInstalled)
 
+    $updaterVersion = [Version](Get-Item -LiteralPath $Updater).VersionInfo.FileVersion
+    if ($updaterVersion -ge [Version]($ExpectVersion + '.0')) {
+        Write-Warning "This updater is already version $updaterVersion. Customers run older updaters; pass the previous release's DlbPrecision.Updater.exe (from its signed build's stage-*\app folder)."
+    }
     $fetched = $feedType.GetMethod('Fetch', $any).Invoke($null, [object[]]@([string]$source, 'DLB-release-check'))
     if ([string]$fetched.Status -ne 'Release') { throw "FAIL: the feed returned $($fetched.Status): $($fetched.Message)" }
-    # Exactly the arguments the real channel uses: no pre-releases, no file addresses, DLB's download prefix.
-    $decision = $offerType.GetMethod('Decide', $any).Invoke($null, [object[]]@($fetched.Release, [Version]$AssumeInstalled, $false, $false, $prefix))
+    if ($fetched.Release.Draft) { throw "FAIL: $($fetched.Release.Tag) is a draft, which is never offered." }
+    if ($fetched.Release.Prerelease -and -not $AsIfLatest) {
+        throw "FAIL: $($fetched.Release.Tag) is a pre-release; installed copies only see the release marked Latest. For the pre-flight, add -AsIfLatest."
+    }
+    # Exactly the arguments the real channel uses: no file addresses and DLB's download prefix. Pre-releases
+    # are allowed only for the -AsIfLatest pre-flight; the real channel never sees them.
+    $decision = $offerType.GetMethod('Decide', $any).Invoke($null, [object[]]@($fetched.Release, [Version]$AssumeInstalled, [bool]$AsIfLatest, $false, $prefix))
     if ([string]$decision.Status -ne 'Available') { throw "FAIL: release $($fetched.Release.Tag) is $($decision.Status) for an installed $AssumeInstalled." }
     $offer = $decision.Offer
     if ($offer.VersionText -ne $ExpectVersion) { throw "FAIL: offered $($offer.VersionText), expected $ExpectVersion." }

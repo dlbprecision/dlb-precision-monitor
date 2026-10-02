@@ -49,6 +49,11 @@ if ($Sign) {
     }
     & $signWrapper @signingArguments -ValidateOnly
     if ($LASTEXITCODE -ne 0) { throw 'Signing preflight failed.' }
+    # The binaries record the commit they were built from; it must be the committed source being released.
+    $dirty = @(& git -C $repoRoot status --porcelain -- src installer scripts tests Directory.Build.props)
+    if ($LASTEXITCODE -ne 0) { throw 'git status failed; signed builds must be made from a git checkout.' }
+    if ($dirty.Count -gt 0) { throw ("Signed builds must come from committed source. Commit or discard these first:`n" + ($dirty -join "`n")) }
+    Write-Host ('Signed build from commit ' + (& git -C $repoRoot rev-parse HEAD) + '. Release from this exact commit and merge it with a merge commit.')
     $SignToolPath = (Get-Item -LiteralPath $SignToolPath).FullName
     $DlibPath = (Get-Item -LiteralPath $DlibPath).FullName
     $SigningMetadataPath = (Get-Item -LiteralPath $SigningMetadataPath).FullName
@@ -305,7 +310,8 @@ if ($Sign) {
     if ($TestBuild) { $verifyArguments += ' --test-build' }
     $verifier = Start-Process -FilePath (Join-Path $appStage 'DlbPrecision.Updater.exe') -ArgumentList $verifyArguments -WindowStyle Hidden -Wait -PassThru
     $verdict = if (Test-Path -LiteralPath $verifyReport) { (Get-Content -LiteralPath $verifyReport -Raw).Trim() } else { 'no report written' }
-    if ($verifier.ExitCode -ne 0) { throw "Installed updaters would refuse this setup: $verdict" }
+    if ($verifier.ExitCode -eq 2) { throw "Installed updaters would refuse this setup: $verdict" }
+    if ($verifier.ExitCode -ne 0) { throw "The release check itself failed (exit $($verifier.ExitCode)), so the setup was not judged: $verdict. Rerun the build." }
     Write-Host ('In-app updater check: ' + $verdict)
 }
 Write-Host ('Built: ' + $setupFile)
