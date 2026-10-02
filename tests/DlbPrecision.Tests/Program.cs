@@ -157,11 +157,21 @@ internal static class Program
             "Successful CPU measurements must clear failed-startup state, regardless of unavailable GPU metrics.");
         Check(!recovery.TryBeginRetry(long.MaxValue), "A healthy reader must not trigger periodic driver checks or reopen attempts.");
         healthy.CpuClockMhz = null;
-        recovery.Observe(healthy, 86402000);
-        Check(recovery.Pending && !recovery.TryBeginRetry(86411999) && recovery.TryBeginRetry(86412000),
-            "Losing one CPU measurement after recovery must start a fresh bounded retry budget.");
-        recovery.Observe(new SensorSnapshot { CpuTemperatureC = 56, CpuClockMhz = 4700, Gpus = ReportingGpu() }, 86412001);
-        Check(!recovery.Pending && !recovery.TryBeginRetry(long.MaxValue), "Readings that recover naturally must cancel pending recovery.");
+        Check(!recovery.Observe(healthy, 86402000) && recovery.CpuExhausted && !recovery.Pending,
+            "A fault that returns within minutes continues its old retry budget instead of restarting it.");
+        healthy.CpuClockMhz = 4800;
+        recovery.Observe(healthy, 86403000);
+        recovery.Observe(healthy, 86703000);
+        healthy.CpuClockMhz = null;
+        recovery.Observe(healthy, 86704000);
+        Check(recovery.Pending && !recovery.TryBeginRetry(86713999) && recovery.TryBeginRetry(86714000),
+            "After readings have stayed good for 5 minutes, a new fault gets a fresh bounded retry budget.");
+        recovery.Observe(healthy, 86714000);
+        var back = new SensorSnapshot { CpuTemperatureC = 56, CpuClockMhz = 4700, Gpus = ReportingGpu() };
+        recovery.Observe(back, 86715000);
+        Check(recovery.Pending && !recovery.Retrying, "Readings that have just come back show no 'will retry' message while the retry winds down.");
+        recovery.Observe(back, 86720000);
+        Check(!recovery.Pending && !recovery.TryBeginRetry(long.MaxValue), "Readings that stay back for 5 seconds cancel pending recovery.");
     }
 
     private static List<GpuSnapshot> ReportingGpu() => new List<GpuSnapshot> { new GpuSnapshot { ClockMhz = 510 } };
@@ -182,8 +192,9 @@ internal static class Program
             "A GPU that stops reporting, as after a graphics-driver update, must schedule bounded recovery.");
         Check(!recovery.Observe(Sample(), 12000) && recovery.Pending && !recovery.TryBeginRetry(41999),
             "A GPU still missing after reopening sensors must use the next, longer retry delay.");
-        Check(recovery.Observe(Sample(live), 13000) && !recovery.Pending && !recovery.GpuExhausted,
-            "GPU readings that return must clear recovery state.");
+        recovery.Observe(Sample(live), 13000);
+        Check(recovery.Observe(Sample(live), 18000) && !recovery.Pending && !recovery.GpuExhausted,
+            "GPU readings that return and stay back must clear recovery state.");
         Check(SensorRecovery.CpuReady(Sample()) && !SensorRecovery.CpuReady(new SensorSnapshot { CpuTemperatureC = 50 }),
             "CPU readiness still requires both temperature and clock for the driver warning.");
 
@@ -212,7 +223,7 @@ internal static class Program
         Check(!recovery.Observe(cpuLost, now + 1000) && recovery.Pending && !recovery.TryBeginRetry(now + 10999) && recovery.TryBeginRetry(now + 11000),
             "Exhausted GPU retries never disable CPU recovery.");
         Check(recovery.Observe(Sample(live), now + 12000) && !recovery.Pending && !recovery.GpuExhausted && !recovery.CpuExhausted,
-            "Readings that come back clear both budgets.");
+            "Readings that come back clear both warnings.");
 
         // A graphics-driver install can keep the card unlisted for minutes; it must still be found again.
         recovery = new SensorRecovery();
@@ -229,7 +240,8 @@ internal static class Program
         }
         Check(now >= driverInstalled && recovery.Observe(Sample(live), now + 1000) && !recovery.GpuExhausted && reopens <= 4,
             "A graphics driver that takes 8 minutes to install is found again by the slower GPU retries, after at most four sensor reopens (" + reopens + ").");
-        Check(!recovery.Observe(Sample(blank), now + 2000) && recovery.Pending, "That GPU is still watched afterwards.");
+        recovery.Observe(Sample(live), now + 301000);
+        Check(!recovery.Observe(Sample(blank), now + 302000) && recovery.Pending, "That GPU is still watched afterwards, with a fresh budget once it has reported for 5 minutes.");
 
         // A long GPU wait never holds up the CPU's own, quicker recovery.
         recovery = new SensorRecovery();
@@ -273,6 +285,40 @@ internal static class Program
             && GpuFoundAfterDriverInstall(cpuGlitchAt: -1, cpuGlitchSamples: 0),
             "CPU readings that fail during a graphics-driver install never make the service give up on the graphics card early.");
 
+        // Each graphics card has its own schedule: a second card that drops out while another card's retries
+        // run (or are spent) gets its own retries and is never forgotten with the other one.
+        var eGpu = new SimCard { Id = "egpu", Gone = 600_000 };                        // unplugged for good
+        var dGpu = new SimCard { Id = "dgpu", Gone = 1_850_000, Back = 1_880_000 };      // short outage across the eGPU's last retry
+        var pair = Simulate(new[] { eGpu, dGpu }, _ => false, 3600);
+        Check(pair.liveAtEnd[1] && !pair.recovery.Pending && !pair.recovery.GpuExhausted,
+            "A card whose driver blinks while another, unplugged card uses its last retry is found again.");
+        pair = Simulate(new[] { new SimCard { Id = "b", Gone = 100_000 }, new SimCard { Id = "a", Gone = 1_360_000, Back = 1_480_000 } }, _ => false, 3600);
+        Check(pair.liveAtEnd[1], "A card that drops out after another card's retries are spent still gets its own retries.");
+        pair = Simulate(new[] { new SimCard { Id = "b", Gone = 300_000, Back = 780_000 }, new SimCard { Id = "a", Gone = 1_110_000, Back = 1_590_000 } }, _ => false, 3600);
+        Check(pair.liveAtEnd[0] && pair.liveAtEnd[1], "Two driver installs one after the other both end with their cards found again.");
+
+        // A fault that keeps coming back is bounded: one good sample neither refills the budget nor cancels a retry.
+        foreach (int badSeconds in new[] { 2, 9, 10, 11, 59 })
+        {
+            int cycle = badSeconds + 1;
+            var flap = Simulate(new[] { new SimCard { Id = "g" } }, t => t >= 300_000 && (t / 1000 - 300) % cycle != badSeconds, 3600);
+            Check(flap.reopens >= 1 && flap.reopens <= 3,
+                "CPU readings that fail for " + badSeconds + " s at a time reopen sensors a bounded number of times (" + flap.reopens + "), never forever or never.");
+        }
+        long afterReopen = 0;
+        var glitch = Simulate(new[] { new SimCard { Id = "g" } }, t => t >= 300_000 && t != afterReopen, 3600, onReopen: t => afterReopen = t);
+        Check(glitch.reopens <= 3, "A fault that each reopen clears for only a moment is retried a bounded number of times (" + glitch.reopens + ").");
+
+        // A failed read says nothing about the cards: it never makes the service forget one.
+        recovery = new SensorRecovery();
+        recovery.Observe(Sample(live), 0);
+        now = 1000;
+        recovery.Observe(Sample(blank), now);
+        while (recovery.Pending) now = RetryAndObserve(recovery, now, Sample(blank));
+        recovery.Observe(SensorSnapshot.Unavailable("Sensor update failed (IOException)."), now + 1000);
+        Check(!recovery.Observe(Sample(blank), now + 2000) && recovery.GpuExhausted,
+            "A failed read after a card's retries are spent keeps its 'restart the service' warning.");
+
         var reported = new SensorSnapshot { Status = "ok" };
         SensorRecovery.AddWarning(reported, "Retrying sensors.");
         Check(reported.Status == "partial" && reported.Warnings.Contains("Retrying sensors."),
@@ -280,6 +326,43 @@ internal static class Program
         var unavailable = SensorSnapshot.Unavailable("Missing driver");
         SensorRecovery.AddWarning(unavailable, "Retrying sensors.");
         Check(unavailable.Status == "Missing driver", "An explicit failure status is kept when a warning is added.");
+    }
+
+    private sealed class SimCard
+    {
+        public string Id = "";
+        public long Gone = long.MaxValue;   // the card's driver is missing during [Gone, Back)
+        public long Back = long.MaxValue;   // MaxValue: unplugged or disabled for good
+    }
+
+    // One sample a second, read the way the service reads: the sensor library lists a card only if its driver
+    // was present when sensors were last (re)opened, and a card whose driver left after that open stays blank
+    // until the next reopen, even once the driver is back.
+    private static (int reopens, bool[] liveAtEnd, SensorRecovery recovery) Simulate(SimCard[] cards, Func<long, bool> cpuBad, long seconds,
+        Action<long>? onReopen = null)
+    {
+        var recovery = new SensorRecovery();
+        long openedAt = 0;
+        int reopens = 0;
+        var live = new bool[cards.Length];
+        for (long now = 0; now <= seconds * 1000; now += 1000)
+        {
+            if (now > 0 && recovery.TryBeginRetry(now)) { openedAt = now; reopens++; onReopen?.Invoke(now); }
+            var gpus = new List<GpuSnapshot>();
+            for (int i = 0; i < cards.Length; i++)
+            {
+                SimCard card = cards[i];
+                bool presentAtOpen = !(openedAt >= card.Gone && openedAt < card.Back);
+                bool presentNow = !(now >= card.Gone && now < card.Back);
+                bool staleHandles = openedAt < card.Gone && now >= card.Gone;
+                live[i] = presentAtOpen && presentNow && !staleHandles;
+                if (presentAtOpen)
+                    gpus.Add(live[i] ? new GpuSnapshot { Id = card.Id, Name = card.Id, TemperatureC = 40, LoadPercent = 2, ClockMhz = 300 }
+                                     : new GpuSnapshot { Id = card.Id, Name = card.Id });
+            }
+            recovery.Observe(new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = cpuBad(now) ? (double?)null : 4000, Gpus = gpus }, now);
+        }
+        return (reopens, live, recovery);
     }
 
     // Simulates one sample a second while a graphics driver installs. Reopening sensors lists the card again only

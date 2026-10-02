@@ -131,7 +131,7 @@ namespace DlbPrecision.Service
                 recovery.Observe(snapshot, cacheClock.ElapsedMilliseconds);
                 if (SensorRecovery.CpuReady(snapshot)) driverWarning = null;
                 else if (driverWarning != null) SensorRecovery.AddWarning(snapshot, driverWarning);
-                if (recovery.Pending)
+                if (recovery.Retrying)
                     SensorRecovery.AddWarning(snapshot, "DLB will retry sensor initialization automatically while the monitor is open.");
                 else if (recovery.CpuExhausted)
                     SensorRecovery.AddWarning(snapshot, "Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");

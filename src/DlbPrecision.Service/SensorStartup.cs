@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Security;
 using System.ServiceProcess;
 using System.Threading;
@@ -59,37 +60,65 @@ namespace DlbPrecision.Service
 
     internal sealed class SensorRecovery
     {
-        // Bounded rediscovery; unsupported hardware stays partial until readings recover or the service
-        // restarts. Separate budgets keep a GPU problem from ever using up the CPU's recovery. GPU retries
-        // run longer (about 21 minutes in all), because a graphics-driver install can keep the card
-        // unlisted for several minutes, and a card is only forgotten once they are spent.
+        // Bounded rediscovery: unsupported or broken sensors stay partial until readings recover or the service
+        // restarts. The CPU and every graphics card keep their own retry schedule. One reopen serves them all,
+        // but only spends the retries that were due, so one problem never uses up another's recovery. GPU retries
+        // run longer (about 21 minutes in all) because a graphics-driver install can keep a card unlisted for
+        // several minutes; a card is forgotten only once its own retries are spent and it is no longer listed
+        // (unplugged or disabled).
         private static readonly long[] CpuDelays = { 10000, 30000, 60000 };
         private static readonly long[] GpuDelays = { 10000, 60000, 300000, 900000 };
-        private readonly HashSet<string> reportingGpus = new HashSet<string>(StringComparer.Ordinal);
-        private int cpuRetries;
-        private int gpuRetries;
+        // A brief good reading neither cancels a planned retry nor refills a budget. Readings must stay good for
+        // SettleTime to cancel a retry, and for RefillTime before a new fault gets a fresh budget. A fault that
+        // returns within RefillTime of such a natural recovery gets a firm retry that good readings no longer
+        // cancel. Otherwise a fault that keeps returning would reopen sensors forever, or keep promising
+        // retries that never happen.
+        private const long SettleTime = 5000;
+        private const long RefillTime = 300000;
+        // Reopening is expensive, so reopens are at least this far apart even when schedules fall close together.
+        private const long MinimumGap = 10000;
+
+        private sealed class Track
+        {
+            public int Retries;
+            public long DueAt = -1;
+            public bool Firm;            // the planned retry happens even if readings come back first
+            public long GoodSince = -1;  // -1 while failing
+            public long CancelledAt = long.MinValue / 2;
+        }
+
+        private readonly Track cpu = new Track();
+        // Cards are watched only after they have reported, so hardware that never exposes GPU sensors does not
+        // trigger rediscovery, while one that goes blank later (for example after a graphics-driver update) does.
+        private readonly Dictionary<string, Track> gpus = new Dictionary<string, Track>(StringComparer.Ordinal);
         private bool cpuReady = true;
         private bool gpusReady = true;
-        // Each kind keeps its own due time, so a CPU problem never moves or spends a GPU retry and the other way round.
-        private long cpuDueAt = -1;
-        private long gpuDueAt = -1;
         private long lastReopenAt = -1;
 
-        internal bool Pending => cpuDueAt >= 0 || gpuDueAt >= 0;
-        private long RetryAt => cpuDueAt < 0 ? gpuDueAt : gpuDueAt < 0 ? cpuDueAt : Math.Min(cpuDueAt, gpuDueAt);
-        internal bool CpuExhausted => !cpuReady && cpuRetries == CpuDelays.Length;
-        internal bool GpuExhausted => !gpusReady && gpuRetries == GpuDelays.Length;
+        internal bool Pending => cpu.DueAt >= 0 || gpus.Values.Any(card => card.DueAt >= 0);
+        // A retry is planned and readings are still missing: what the "will retry" message promises.
+        internal bool Retrying => Pending && !(cpuReady && gpusReady);
+        internal bool CpuExhausted => !cpuReady && cpu.Retries == CpuDelays.Length;
+        internal bool GpuExhausted => gpus.Values.Any(card => card.GoodSince < 0 && card.Retries == GpuDelays.Length);
 
-        // One reopen serves both, but only a kind whose own retry was due spends it. Reopening is expensive, so
-        // reopens are at least the shortest retry delay apart even when the two schedules fall close together.
         internal bool TryBeginRetry(long milliseconds)
         {
-            if (!Pending || milliseconds < RetryAt) return false;
-            if (lastReopenAt >= 0 && milliseconds < lastReopenAt + CpuDelays[0]) return false;
+            long retryAt = gpus.Values.Where(card => card.DueAt >= 0).Select(card => card.DueAt).DefaultIfEmpty(-1).Min();
+            if (cpu.DueAt >= 0 && (retryAt < 0 || cpu.DueAt < retryAt)) retryAt = cpu.DueAt;
+            if (retryAt < 0 || milliseconds < retryAt) return false;
+            if (lastReopenAt >= 0 && milliseconds < lastReopenAt + MinimumGap) return false;
             lastReopenAt = milliseconds;
-            if (cpuDueAt >= 0 && milliseconds >= cpuDueAt) { cpuRetries++; cpuDueAt = -1; }
-            if (gpuDueAt >= 0 && milliseconds >= gpuDueAt) { gpuRetries++; gpuDueAt = -1; }
+            Spend(cpu, milliseconds);
+            foreach (Track card in gpus.Values) Spend(card, milliseconds);
             return true;
+        }
+
+        private static void Spend(Track track, long milliseconds)
+        {
+            if (track.DueAt < 0 || milliseconds < track.DueAt) return;
+            track.Retries++;
+            track.DueAt = -1;
+            track.Firm = false;
         }
 
         internal static bool CpuReady(SensorSnapshot snapshot) => snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
@@ -101,31 +130,44 @@ namespace DlbPrecision.Service
             if (snapshot.Status == "ok") snapshot.Status = "partial";
         }
 
-        // A GPU is watched only after it has reported, so hardware that never exposes GPU sensors
-        // does not trigger rediscovery, while one that goes blank later (for example after a
-        // graphics-driver update) does. Reopening sensors re-initializes the vendor libraries.
+        // Reopening sensors re-initializes the vendor libraries, which brings back readings that a driver
+        // update or a sensor fault took away.
         internal bool Observe(SensorSnapshot snapshot, long milliseconds)
         {
-            // Once the GPU retries are spent, a watched GPU that sensors no longer list at all was
-            // unplugged or disabled; stop waiting for it.
-            if (gpuRetries == GpuDelays.Length) reportingGpus.RemoveWhere(id => !IsListed(snapshot, id));
-            gpusReady = true;
-            foreach (string id in reportingGpus)
-                if (!IsReporting(snapshot, id)) gpusReady = false;
-            foreach (GpuSnapshot gpu in snapshot.Gpus)
-                if (HasReading(gpu)) reportingGpus.Add(gpu.Id);
-
             cpuReady = CpuReady(snapshot);
-            if (cpuReady) cpuRetries = 0;
-            if (gpusReady) gpuRetries = 0;
-            // A due time is set once and kept while the problem lasts, so repeated failed samples never postpone it.
-            if (cpuReady || cpuRetries == CpuDelays.Length) cpuDueAt = -1;
-            else if (cpuDueAt < 0) cpuDueAt = milliseconds + CpuDelays[cpuRetries];
-            // While a CPU retry is pending it reopens everything (GPU libraries included), so a GPU retry is
-            // scheduled only when none is: the CPU reads, or its retries are used up. One already scheduled is kept.
-            if (gpusReady || gpuRetries == GpuDelays.Length) gpuDueAt = -1;
-            else if (gpuDueAt < 0 && cpuDueAt < 0) gpuDueAt = milliseconds + GpuDelays[gpuRetries];
+            Update(cpu, cpuReady, CpuDelays, milliseconds);
+            // A failed read lists nothing, which says nothing about the cards: leave them as they were.
+            if (!snapshot.ReadFailed)
+            {
+                foreach (GpuSnapshot gpu in snapshot.Gpus)
+                    if (HasReading(gpu) && !gpus.ContainsKey(gpu.Id)) gpus[gpu.Id] = new Track();
+                foreach (string id in gpus.Keys.ToList())
+                {
+                    Track card = gpus[id];
+                    bool reporting = IsReporting(snapshot, id);
+                    // Its own retries are spent and it is not even listed: unplugged or disabled. Stop waiting.
+                    if (!reporting && card.Retries == GpuDelays.Length && !IsListed(snapshot, id)) { gpus.Remove(id); continue; }
+                    Update(card, reporting, GpuDelays, milliseconds);
+                }
+            }
+            gpusReady = gpus.Values.All(card => card.GoodSince >= 0);
             return cpuReady && gpusReady;
+        }
+
+        private static void Update(Track track, bool good, long[] delays, long milliseconds)
+        {
+            if (good)
+            {
+                if (track.GoodSince < 0) track.GoodSince = milliseconds;
+                long goodFor = milliseconds - track.GoodSince;
+                if (goodFor >= SettleTime && track.DueAt >= 0 && !track.Firm) { track.DueAt = -1; track.CancelledAt = milliseconds; }
+                if (goodFor >= RefillTime) { track.Retries = 0; track.DueAt = -1; track.Firm = false; }
+                return;
+            }
+            track.GoodSince = -1;
+            if (track.DueAt >= 0 || track.Retries == delays.Length) return;
+            track.DueAt = milliseconds + delays[track.Retries];
+            track.Firm = milliseconds - track.CancelledAt < RefillTime;
         }
 
         private static bool IsListed(SensorSnapshot snapshot, string id)
