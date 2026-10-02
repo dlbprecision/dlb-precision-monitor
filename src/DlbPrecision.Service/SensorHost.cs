@@ -130,11 +130,13 @@ namespace DlbPrecision.Service
                 }
                 recovery.Observe(snapshot, cacheClock.ElapsedMilliseconds);
                 if (SensorRecovery.CpuReady(snapshot)) driverWarning = null;
-                else if (driverWarning != null) snapshot.Warnings.Add(driverWarning);
+                else if (driverWarning != null) SensorRecovery.AddWarning(snapshot, driverWarning);
                 if (recovery.Pending)
-                    snapshot.Warnings.Add("DLB will retry sensor initialization automatically while the monitor is open.");
-                else if (recovery.Exhausted)
-                    snapshot.Warnings.Add("Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");
+                    SensorRecovery.AddWarning(snapshot, "DLB will retry sensor initialization automatically while the monitor is open.");
+                else if (recovery.CpuExhausted)
+                    SensorRecovery.AddWarning(snapshot, "Automatic sensor startup retries are exhausted. Inspect the sensor report and Windows driver status; restart the DLB sensor service after correcting the problem.");
+                else if (recovery.GpuExhausted)
+                    SensorRecovery.AddWarning(snapshot, "A graphics card stopped reporting and automatic retries are exhausted. Once its driver has finished installing, restart the DLB sensor service or Windows.");
                 snapshot.TimestampUtc = DateTime.UtcNow;
                 cache = SnapshotCodec.Encode(snapshot);
                 lastSampleStarted = requested;

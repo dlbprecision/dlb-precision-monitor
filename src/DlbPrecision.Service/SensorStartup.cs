@@ -59,39 +59,68 @@ namespace DlbPrecision.Service
 
     internal sealed class SensorRecovery
     {
-        // Cap rediscovery at three retries; unsupported hardware stays partial until readings recover or the service restarts.
+        // Cap rediscovery at three retries each for the CPU and the GPUs; unsupported hardware stays
+        // partial until readings recover or the service restarts. Separate budgets keep a GPU problem
+        // from ever using up the CPU's recovery.
         private static readonly long[] Delays = { 10000, 30000, 60000 };
         private readonly HashSet<string> reportingGpus = new HashSet<string>(StringComparer.Ordinal);
-        private int retries;
+        private int cpuRetries;
+        private int gpuRetries;
+        private bool cpuReady = true;
+        private bool gpusReady = true;
         private long retryAt = -1;
 
         internal bool Pending => retryAt >= 0;
-        internal bool Exhausted => retries == Delays.Length && !Pending;
+        internal bool CpuExhausted => !cpuReady && cpuRetries == Delays.Length;
+        internal bool GpuExhausted => !gpusReady && gpuRetries == Delays.Length;
+
         internal bool TryBeginRetry(long milliseconds)
         {
             if (!Pending || milliseconds < retryAt) return false;
-            retries++;
+            if (!cpuReady && cpuRetries < Delays.Length) cpuRetries++;
+            if (!gpusReady && gpuRetries < Delays.Length) gpuRetries++;
             retryAt = -1;
             return true;
         }
 
         internal static bool CpuReady(SensorSnapshot snapshot) => snapshot.CpuTemperatureC.HasValue && snapshot.CpuClockMhz.HasValue;
 
+        // Shown with the sample; a sample that carries a recovery warning is not "ok".
+        internal static void AddWarning(SensorSnapshot snapshot, string warning)
+        {
+            snapshot.Warnings.Add(warning);
+            if (snapshot.Status == "ok") snapshot.Status = "partial";
+        }
+
         // A GPU is watched only after it has reported, so hardware that never exposes GPU sensors
         // does not trigger rediscovery, while one that goes blank later (for example after a
         // graphics-driver update) does. Reopening sensors re-initializes the vendor libraries.
         internal bool Observe(SensorSnapshot snapshot, long milliseconds)
         {
-            bool gpusReady = true;
+            // Once the GPU retries are spent, a watched GPU that sensors no longer list at all was
+            // unplugged or disabled; stop waiting for it.
+            if (gpuRetries == Delays.Length) reportingGpus.RemoveWhere(id => !IsListed(snapshot, id));
+            gpusReady = true;
             foreach (string id in reportingGpus)
                 if (!IsReporting(snapshot, id)) gpusReady = false;
             foreach (GpuSnapshot gpu in snapshot.Gpus)
                 if (HasReading(gpu)) reportingGpus.Add(gpu.Id);
 
-            bool ready = CpuReady(snapshot) && gpusReady;
-            if (ready) { retries = 0; retryAt = -1; }
-            else if (!Pending && retries < Delays.Length) retryAt = milliseconds + Delays[retries];
-            return ready;
+            cpuReady = CpuReady(snapshot);
+            if (cpuReady) cpuRetries = 0;
+            if (gpusReady) gpuRetries = 0;
+            bool cpuRetry = !cpuReady && cpuRetries < Delays.Length;
+            bool gpuRetry = !gpusReady && gpuRetries < Delays.Length;
+            if (!cpuRetry && !gpuRetry) retryAt = -1;
+            else if (!Pending) retryAt = milliseconds + Delays[cpuRetry ? cpuRetries : gpuRetries];
+            return cpuReady && gpusReady;
+        }
+
+        private static bool IsListed(SensorSnapshot snapshot, string id)
+        {
+            foreach (GpuSnapshot gpu in snapshot.Gpus)
+                if (gpu.Id == id) return true;
+            return false;
         }
 
         private static bool IsReporting(SensorSnapshot snapshot, string id)
