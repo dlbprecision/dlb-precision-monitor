@@ -242,6 +242,21 @@ internal static class Program
         Check(!recovery.Observe(cpuGone, now + 1000) && recovery.Pending && recovery.TryBeginRetry(now + 11000),
             "CPU readings lost while a 5-minute GPU retry is waiting are retried after 10 seconds, not after the GPU wait.");
 
+        // A CPU that can't be read at all (unsupported, or its driver blocked) uses up its retries; a GPU that
+        // stops reporting later still gets its own retries and warning.
+        recovery = new SensorRecovery();
+        var cpuless = new SensorSnapshot { Gpus = new List<GpuSnapshot> { live } };
+        now = 0;
+        recovery.Observe(cpuless, now);
+        while (recovery.Pending) now = RetryAndObserve(recovery, now, cpuless);
+        Check(recovery.CpuExhausted && !recovery.Pending, "An unreadable CPU uses up its retries.");
+        var cpulessBlank = new SensorSnapshot { Gpus = new List<GpuSnapshot> { blank } };
+        now += 60_000;
+        Check(!recovery.Observe(cpulessBlank, now) && recovery.Pending && !recovery.TryBeginRetry(now + 9_999) && recovery.TryBeginRetry(now + 10_000),
+            "With the CPU's retries used up, a GPU that stops reporting is still retried after 10 seconds.");
+        Check(GpuFoundAfterDriverInstall(cpuGlitchAt: 0, cpuGlitchSamples: 10_000),
+            "On a PC whose CPU sensors never read, a graphics card is still found again after a driver install.");
+
         // Separate CPU and GPU schedules never reopen sensors in quick succession.
         recovery = new SensorRecovery();
         recovery.Observe(Sample(live), 0);
@@ -286,7 +301,8 @@ internal static class Program
             else if (lastReopen >= driverInstalled) gpus.Add(card);
             bool cpuBad = cpuGlitchAt >= 0 && now >= cpuGlitchAt && now < cpuGlitchAt + cpuGlitchSamples * 1000;
             var sample = new SensorSnapshot { CpuTemperatureC = 50, CpuClockMhz = cpuBad ? (double?)null : 4000, Gpus = gpus };
-            found = recovery.Observe(sample, now) && gpus.Count == 1 && gpus[0].ClockMhz.HasValue;
+            recovery.Observe(sample, now);
+            found = gpus.Count == 1 && gpus[0].ClockMhz.HasValue;
         }
         return found && !recovery.Pending && !recovery.GpuExhausted;
     }

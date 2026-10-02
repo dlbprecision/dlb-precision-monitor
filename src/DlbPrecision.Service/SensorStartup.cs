@@ -121,10 +121,10 @@ namespace DlbPrecision.Service
             // A due time is set once and kept while the problem lasts, so repeated failed samples never postpone it.
             if (cpuReady || cpuRetries == CpuDelays.Length) cpuDueAt = -1;
             else if (cpuDueAt < 0) cpuDueAt = milliseconds + CpuDelays[cpuRetries];
-            // While the CPU can't be read, its retries reopen everything (GPU libraries included), so a GPU retry
-            // is only scheduled once the CPU reads again; one already scheduled is kept.
+            // While a CPU retry is pending it reopens everything (GPU libraries included), so a GPU retry is
+            // scheduled only when none is: the CPU reads, or its retries are used up. One already scheduled is kept.
             if (gpusReady || gpuRetries == GpuDelays.Length) gpuDueAt = -1;
-            else if (gpuDueAt < 0 && cpuReady) gpuDueAt = milliseconds + GpuDelays[gpuRetries];
+            else if (gpuDueAt < 0 && cpuDueAt < 0) gpuDueAt = milliseconds + GpuDelays[gpuRetries];
             return cpuReady && gpusReady;
         }
 
